@@ -63,6 +63,11 @@ function validateEnv() {
     MAX_FILE_SIZE_MB: maxFileSizeMb,
     PYTHON_SERVICE_URL: pythonServiceUrl,
     REQUEST_LIMIT: process.env.REQUEST_LIMIT || '10mb',
+    GROQ_API_KEY: process.env.GROQ_API_KEY || process.env.GROK_API_KEY || null,
+    GROQ_MODEL: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY || null,
+    GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+    LLM_TIMEOUT_MS: process.env.LLM_TIMEOUT_MS ? parseInt(process.env.LLM_TIMEOUT_MS, 10) : 25000,
   };
 }
 

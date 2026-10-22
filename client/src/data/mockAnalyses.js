@@ -116,6 +116,42 @@ export const INITIAL_MOCK_ANALYSES = [
       { item: 'Font compatibility', status: 'Passed', message: 'Uses standard clean sans-serif typography recognizable by legacy parsers.' },
       { item: 'Chronological timeline order', status: 'Warning', message: 'Ensure most recent employment is listed first without date overlaps.' },
     ],
+    llmFeedback: {
+      providerUsed: 'groq',
+      modelUsed: 'openai/gpt-oss-20b',
+      generatedAt: '2026-10-12T10:30:15.000Z',
+      executiveSummary: 'Candidate presents a strong frontend foundation with extensive React, TypeScript, and modern styling experience that aligns closely with Stripe\'s core UI engineering requirements. Primary gap is lack of documented end-to-end testing (Cypress/Playwright) and containerization in production environments.',
+      strengths: [
+        'Demonstrated mastery of React, TypeScript, and Tailwind CSS with demonstrable client-side state management.',
+        'Clear focus on Core Web Vitals optimization and bundle size reduction techniques.',
+        'Production track record building scalable reusable component design systems.',
+      ],
+      criticalGaps: [
+        'Missing Evidence: No explicit mention of E2E browser automation (Cypress, Playwright) required by Stripe\'s QA pipeline.',
+        'Missing Evidence: GraphQL client integration (Apollo/Urql) absent despite job description prioritizing client-side schema consumption.',
+        'Skill Gap: Minimal containerization and CI/CD workflow details for local and deployed micro-frontend environments.',
+      ],
+      actionableRecommendations: [
+        {
+          section: 'Work Experience - Recent Projects',
+          currentObservation: 'Highlights React component creation and bug fixes but does not showcase automated testing.',
+          suggestedImprovement: 'Add a bullet point demonstrating how you validated components using integration and E2E testing to prevent production regressions.',
+          exampleRewrite: 'Engineered comprehensive test coverage using [Jest/React Testing Library/Cypress], decreasing regression escape rates by [X%] across [N] core checkout flows.',
+        },
+        {
+          section: 'Technical Skills & API Integration',
+          currentObservation: 'Lists REST APIs and JSON endpoints without detailing API query abstraction or caching layers.',
+          suggestedImprovement: 'Explicitly mention experience querying GraphQL endpoints or managing optimistic UI updates with caching libraries.',
+          exampleRewrite: 'Implemented client-side data fetching and normalized caching utilizing [Apollo Client / TanStack Query], reducing redundant network roundtrips by [X%].',
+        },
+        {
+          section: 'Professional Summary',
+          currentObservation: 'Generic introductory statement that does not highlight high-scale distributed frontend architecture.',
+          suggestedImprovement: 'Position yourself directly as a Senior Frontend Specialist with focus on mission-critical financial or SaaS user interfaces.',
+          exampleRewrite: 'Senior Frontend Engineer with [N] years building high-reliability, accessible React/TypeScript interfaces serving [N,000+] active users with sub-second page loads.',
+        },
+      ],
+    },
   },
   {
     id: 'analysis-02',

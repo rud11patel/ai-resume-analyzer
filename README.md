@@ -136,6 +136,11 @@ Copy-Item .env.example .env
 | `MAX_FILE_SIZE_MB` | `5` | Maximum upload size in megabytes |
 | `PYTHON_SERVICE_URL` | `http://127.0.0.1:8000` | Internal URL of Python NLP microservice |
 | `REQUEST_LIMIT` | `10mb` | Maximum JSON request body payload size |
+| `GROQ_API_KEY` | *(Optional)* | Primary LLM: Groq API key (LPU inference) for recruiter critique & gap analysis |
+| `GROQ_MODEL` | `openai/gpt-oss-20b` | Model identifier for Groq API |
+| `GEMINI_API_KEY` | *(Optional)* | Fallback LLM: Google Gemini API key if Groq fails or is unconfigured |
+| `GEMINI_MODEL` | `gemini-1.5-flash` | Model identifier for Google Gemini API |
+| `LLM_TIMEOUT_MS` | `25000` | Request timeout before falling back or continuing |
 
 ### Python Microservice (`ml-service/.env`)
 | Variable | Default Value | Description |
@@ -154,28 +159,47 @@ Copy-Item .env.example .env
 
 ## 7. Starting the Services Locally (Windows)
 
-Open three separate PowerShell terminal windows:
+You can launch all 3 services simultaneously with a single command from the project root:
 
-### Terminal 1: Python ML & NLP Analysis Engine
+### Option A: Unified Launcher (Recommended)
+In your terminal at the repository root:
+```powershell
+.\start-services.ps1
+# OR: npm run dev
+# OR: node start-all.js
+# OR: double-click start-services.bat
+```
+This runs all 3 services concurrently in one window with color-coded log prefixes and cleanly shuts all of them down on `Ctrl+C`:
+- **Python ML Service**: `http://127.0.0.1:8000` (FastAPI / NLP Engine)
+- **Node.js Express Gateway**: `http://localhost:5000`
+- **React Frontend Client**: `http://localhost:5173`
+
+### Option B: Separate Terminal Windows
+If you prefer each service running in its own dedicated PowerShell window:
+```powershell
+.\start-services.ps1 -SeparateWindows
+```
+
+### Option C: Manual Multi-Terminal Launch
+If you want to start each manually:
+
+#### Terminal 1: Python ML & NLP Analysis Engine
 ```powershell
 cd ml-service
 .\venv\Scripts\Activate.ps1
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-# Running on http://127.0.0.1:8000 (Swagger docs: http://127.0.0.1:8000/docs)
 ```
 
-### Terminal 2: Node.js Express Gateway
+#### Terminal 2: Node.js Express Gateway
 ```powershell
 cd server
 npm run dev
-# Running on http://localhost:5000
 ```
 
-### Terminal 3: React Frontend Client
+#### Terminal 3: React Frontend Client
 ```powershell
 cd client
 npm run dev
-# Running on http://localhost:5173
 ```
 
 ---

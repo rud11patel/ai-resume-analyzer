@@ -8,7 +8,6 @@ import {
   Lock, 
   Eye, 
   EyeOff, 
-  ShieldAlert, 
   AlertCircle 
 } from 'lucide-react';
 import { useMockAuth } from '../hooks/useMockAuth';
@@ -64,39 +63,30 @@ export function RegisterPage() {
       await signup({ name, email, password });
       navigate('/dashboard');
     } catch (err) {
-      setErrors({ form: 'Simulated registration failed. Please try again.' });
+      setErrors({ form: 'Registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+    <div className="min-h-[75vh] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         {/* Brand header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 mb-2">
-            <FileText className="w-6 h-6" />
+          <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-zinc-900 border border-zinc-700/80 text-zinc-100 shadow-xs mb-2">
+            <FileText className="w-5 h-5" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight">
             Create Your Account
           </h1>
-          <p className="text-xs text-slate-400">
-            Start comparing your resume with top engineering job openings
+          <p className="text-xs text-zinc-400">
+            Compare candidate resumes against real job requirements
           </p>
         </div>
 
-        {/* Phase 2 Notice */}
-        <div className="p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-500/30 text-xs text-indigo-300 flex items-start gap-2.5">
-          <ShieldAlert className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <strong className="text-white">Phase 2 Prototype Mode:</strong> UI registration simulation. 
-            Creates an in-memory session. Real database persistence will be integrated in Phase 3.
-          </div>
-        </div>
-
         {/* Form Card */}
-        <div className="p-6 sm:p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl">
+        <div className="p-6 sm:p-8 rounded-2xl bg-[#111318] border border-[#232734] shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             <TextInput
               id="reg-name"
@@ -133,7 +123,7 @@ export function RegisterPage() {
             <TextInput
               id="reg-password"
               name="password"
-              label="Create Password"
+              label="Password"
               type={showPassword ? 'text' : 'password'}
               required
               icon={Lock}
@@ -148,7 +138,7 @@ export function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -187,7 +177,7 @@ export function RegisterPage() {
                 variant="primary"
                 size="md"
                 isLoading={isLoading}
-                className="w-full shadow-lg shadow-indigo-600/25"
+                className="w-full"
                 icon={UserPlus}
               >
                 Create Account
@@ -195,10 +185,10 @@ export function RegisterPage() {
             </div>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-slate-800/80 text-center text-xs text-slate-400">
+          <div className="mt-6 pt-5 border-t border-[#232734] text-center text-xs text-zinc-400">
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-indigo-400 hover:text-indigo-300">
-              Sign In instead
+            <Link to="/login" className="font-medium text-zinc-200 hover:underline">
+              Sign In
             </Link>
           </div>
         </div>

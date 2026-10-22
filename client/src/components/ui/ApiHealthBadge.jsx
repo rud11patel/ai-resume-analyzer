@@ -15,68 +15,68 @@ export function ApiHealthBadge({ showDetailsModal = true }) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-mono font-medium border transition-colors cursor-pointer bg-slate-900 hover:bg-slate-850 border-slate-800 text-slate-300"
+        className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs font-mono font-medium border transition-colors cursor-pointer bg-[#111318] hover:bg-[#16181F] border-[#232734] text-zinc-300"
         title="Backend API Connection Status"
       >
         <span className="relative flex h-2 w-2">
           {isOnline ? (
             <>
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </>
           ) : (
             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
           )}
         </span>
-        <span className="text-[11px] hidden sm:inline">
-          {isOnline ? 'API Connected' : 'Mock Mode (Local)'}
+        <span className="text-[11px] hidden sm:inline text-zinc-400">
+          {isOnline ? 'API Connected' : 'Local Standby'}
         </span>
       </button>
 
       {/* Popover / Mini Dialog */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-0 bg-[#090A0E]/80 backdrop-blur-xs" onClick={() => setIsOpen(false)} />
           
-          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 p-5 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[#111318] border border-[#262A37] p-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#232734]">
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-indigo-400" />
-                <h4 className="text-sm font-bold text-white">API Health Status</h4>
+                <Activity className="w-4 h-4 text-zinc-400" />
+                <h4 className="text-sm font-semibold text-zinc-100">System Connection Status</h4>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-md"
+                className="text-zinc-400 hover:text-white p-1 rounded-md"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="py-4 space-y-3 text-xs">
-              <div className="flex items-center justify-between py-1.5 border-b border-slate-800/60">
-                <span className="text-slate-400">Express Backend:</span>
+              <div className="flex items-center justify-between py-1.5 border-b border-[#232734]/70">
+                <span className="text-zinc-400">API Server:</span>
                 <span className={`font-semibold flex items-center gap-1 ${isOnline ? 'text-emerald-400' : 'text-amber-400'}`}>
                   {isOnline ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-                  {isOnline ? 'Reachable' : 'Not running (Mock Active)'}
+                  {isOnline ? 'Operational' : 'Mock Active'}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between py-1.5 border-b border-slate-800/60">
-                <span className="text-slate-400">MongoDB Database:</span>
-                <span className={`font-semibold flex items-center gap-1 ${isDbConnected ? 'text-emerald-400' : 'text-slate-400'}`}>
+              <div className="flex items-center justify-between py-1.5 border-b border-[#232734]/70">
+                <span className="text-zinc-400">Database:</span>
+                <span className={`font-semibold flex items-center gap-1 ${isDbConnected ? 'text-emerald-400' : 'text-zinc-500'}`}>
                   {isDbConnected ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
                   {isDbConnected ? 'Connected' : 'Offline / Standby'}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between py-1.5 border-b border-slate-800/60">
-                <span className="text-slate-400">Target Endpoint:</span>
-                <span className="font-mono text-slate-300 truncate max-w-[180px]">{API_BASE_URL}</span>
+              <div className="flex items-center justify-between py-1.5 border-b border-[#232734]/70">
+                <span className="text-zinc-400">Target Endpoint:</span>
+                <span className="font-mono text-zinc-400 truncate max-w-[180px] text-[11px]">{API_BASE_URL}</span>
               </div>
 
-              <p className="text-[11px] text-slate-500 pt-1 leading-relaxed">
-                Phase 2 UI uses client-side mock evaluation. When the Express server is running, the health probe confirms end-to-end network connectivity.
+              <p className="text-[11px] text-zinc-500 pt-1 leading-relaxed">
+                Connects to the deterministic semantic matching engine and document processing services.
               </p>
             </div>
 
@@ -85,10 +85,10 @@ export function ApiHealthBadge({ showDetailsModal = true }) {
                 type="button"
                 onClick={refetch}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Testing...' : 'Retest Health'}
+                {loading ? 'Checking...' : 'Check Status'}
               </button>
             </div>
           </div>

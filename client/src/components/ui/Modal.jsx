@@ -43,38 +43,38 @@ export function Modal({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-[#090A0E]/80 backdrop-blur-xs transition-opacity"
       />
 
       {/* Modal Dialog */}
       <div
-        className={`relative w-full ${maxWidth} rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl z-10 animate-in fade-in zoom-in-95 duration-150`}
+        className={`relative w-full ${maxWidth} rounded-2xl bg-[#111318] border border-[#262A37] p-6 shadow-2xl z-10 animate-in fade-in zoom-in-95 duration-150`}
       >
-        <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-800">
+        <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#232734]">
           <div>
-            <h3 id="modal-title" className="text-lg font-bold text-white tracking-tight">
+            <h3 id="modal-title" className="text-base font-bold text-zinc-100 tracking-tight">
               {title}
             </h3>
             {description && (
-              <p className="text-xs text-slate-400 mt-1">{description}</p>
+              <p className="text-xs text-zinc-400 mt-1">{description}</p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-850 transition-colors cursor-pointer"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="py-4 text-sm text-slate-300">
+        <div className="py-4 text-xs sm:text-sm text-zinc-300">
           {children}
         </div>
 
         {onConfirm && (
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-[#232734]">
             <Button variant="outline" size="sm" onClick={onClose} disabled={isConfirmLoading}>
               {cancelText}
             </Button>

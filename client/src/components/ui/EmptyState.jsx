@@ -13,17 +13,17 @@ export function EmptyState({
 }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 ${className}`}
+      className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-2xl border border-dashed border-[#232734] bg-[#0D0F14]/50 ${className}`}
     >
-      <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 mb-4">
-        <Icon className="w-7 h-7" />
+      <div className="w-12 h-12 rounded-xl bg-zinc-800 text-zinc-300 flex items-center justify-center border border-zinc-700 mb-3.5">
+        <Icon className="w-6 h-6" />
       </div>
-      <h3 className="text-base font-semibold text-white tracking-tight">{title}</h3>
-      <p className="text-xs sm:text-sm text-slate-400 max-w-sm mt-1.5 leading-relaxed">
+      <h3 className="text-sm sm:text-base font-semibold text-zinc-100 tracking-tight">{title}</h3>
+      <p className="text-xs text-zinc-400 max-w-sm mt-1.5 leading-relaxed">
         {description}
       </p>
       {actionLabel && onAction && (
-        <div className="mt-5">
+        <div className="mt-4">
           <Button variant="primary" size="sm" onClick={onAction} icon={actionIcon}>
             {actionLabel}
           </Button>

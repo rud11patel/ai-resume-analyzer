@@ -72,38 +72,38 @@ export function getScoreTheme(score) {
     return {
       text: 'text-emerald-400',
       bg: 'bg-emerald-500/10',
-      border: 'border-emerald-500/30',
+      border: 'border-emerald-500/25',
       stroke: '#10b981',
-      badgeClass: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
+      badgeClass: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/25',
       label: 'Strong Match',
     };
   }
   if (score >= 65) {
     return {
-      text: 'text-indigo-400',
-      bg: 'bg-indigo-500/10',
-      border: 'border-indigo-500/30',
-      stroke: '#6366f1',
-      badgeClass: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30',
+      text: 'text-zinc-200',
+      bg: 'bg-zinc-800/80',
+      border: 'border-zinc-700',
+      stroke: '#E4E4E7',
+      badgeClass: 'bg-zinc-800 text-zinc-200 border border-zinc-700',
       label: 'Good Match',
     };
   }
   if (score >= 50) {
     return {
-      text: 'text-amber-400',
+      text: 'text-amber-300',
       bg: 'bg-amber-500/10',
-      border: 'border-amber-500/30',
+      border: 'border-amber-500/25',
       stroke: '#f59e0b',
-      badgeClass: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+      badgeClass: 'bg-amber-500/10 text-amber-300 border border-amber-500/25',
       label: 'Moderate Match',
     };
   }
   return {
     text: 'text-rose-400',
     bg: 'bg-rose-500/10',
-    border: 'border-rose-500/30',
+    border: 'border-rose-500/25',
     stroke: '#f43f5e',
-    badgeClass: 'bg-rose-500/15 text-rose-400 border border-rose-500/30',
-    label: 'Needs Work',
+    badgeClass: 'bg-rose-500/10 text-rose-300 border border-rose-500/25',
+    label: 'Needs Optimization',
   };
 }

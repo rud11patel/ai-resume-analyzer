@@ -44,6 +44,10 @@ const analysisResultSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    llmFeedback: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
     modelMetadata: {
       engineVersion: { type: String, default: '4.0.0' },
       algorithm: { type: String, default: 'Deterministic-Hybrid-TFIDF-Ngram' },

@@ -94,6 +94,7 @@ export async function fetchAnalysisById(id) {
           improvedBulletPoints: structured.improvedBulletPoints || [],
           atsChecks: structured.atsChecks || [],
           scoreBreakdown: backendData.scoreBreakdown || structured.scoreBreakdown || null,
+          llmFeedback: backendData.llmFeedback || structured.llmFeedback || null,
           isDemoData: backendData.isDemoData ?? false,
         };
       }

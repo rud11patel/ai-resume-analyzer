@@ -7,9 +7,7 @@ import {
   Lock, 
   Eye, 
   EyeOff, 
-  Sparkles, 
-  AlertCircle,
-  ShieldAlert
+  AlertCircle 
 } from 'lucide-react';
 import { useMockAuth } from '../hooks/useMockAuth';
 import { TextInput } from '../components/forms/TextInput';
@@ -54,39 +52,30 @@ export function LoginPage() {
       await login({ email, password });
       navigate('/dashboard');
     } catch (err) {
-      setErrors({ form: 'Simulated sign-in failed. Please try again.' });
+      setErrors({ form: 'Sign-in failed. Please verify credentials.' });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+    <div className="min-h-[75vh] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         {/* Brand header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 mb-2">
-            <FileText className="w-6 h-6" />
+          <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-zinc-900 border border-zinc-700/80 text-zinc-100 shadow-xs mb-2">
+            <FileText className="w-5 h-5" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight">
             Sign In to ResumeAI
           </h1>
-          <p className="text-xs text-slate-400">
-            Access your saved resume evaluations and recommendations
+          <p className="text-xs text-zinc-400">
+            Access your saved evaluations, library documents, and reports
           </p>
         </div>
 
-        {/* Phase 2 UI Simulation Notice */}
-        <div className="p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-500/30 text-xs text-indigo-300 flex items-start gap-2.5">
-          <ShieldAlert className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
-          <div className="leading-relaxed">
-            <strong className="text-white">Phase 2 Prototype Mode:</strong> UI authentication simulation only. 
-            Pre-filled with demo credentials for instant testing. Real backend JWT authentication will be integrated in Phase 3.
-          </div>
-        </div>
-
         {/* Form Card */}
-        <div className="p-6 sm:p-8 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl">
+        <div className="p-6 sm:p-8 rounded-2xl bg-[#111318] border border-[#232734] shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             <TextInput
               id="login-email"
@@ -95,7 +84,7 @@ export function LoginPage() {
               type="email"
               required
               icon={Mail}
-              placeholder="you@company.com"
+              placeholder="name@company.com"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -122,7 +111,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -143,18 +132,18 @@ export function LoginPage() {
                 variant="primary"
                 size="md"
                 isLoading={isLoading}
-                className="w-full shadow-lg shadow-indigo-600/25"
+                className="w-full"
                 icon={LogIn}
               >
-                Sign In to Workspace
+                Sign In
               </Button>
             </div>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-slate-800/80 text-center text-xs text-slate-400">
+          <div className="mt-6 pt-5 border-t border-[#232734] text-center text-xs text-zinc-400">
             Don't have an account?{' '}
-            <Link to="/register" className="font-semibold text-indigo-400 hover:text-indigo-300">
-              Create a free demo account
+            <Link to="/register" className="font-medium text-zinc-200 hover:underline">
+              Create an account
             </Link>
           </div>
         </div>

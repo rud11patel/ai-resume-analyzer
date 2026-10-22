@@ -63,3 +63,7 @@ Thumbs.db
 coverage/
 .nyc_output/
 .pytest_cache/
+
+# Uploaded candidate files
+uploads/
+server/uploads/

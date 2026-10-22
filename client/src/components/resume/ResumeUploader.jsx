@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, FileText, CheckCircle2, AlertCircle, X, RefreshCw } from 'lucide-react';
-import { validateResumeFile, MAX_FILE_SIZE_BYTES } from '../../utils/validators';
+import { validateResumeFile } from '../../utils/validators';
 import { formatBytes } from '../../utils/formatters';
 
 export function ResumeUploader({ file, onFileSelect, onFileRemove, error: externalError }) {
@@ -84,37 +84,37 @@ export function ResumeUploader({ file, onFileSelect, onFileRemove, error: extern
 
       {file ? (
         // Selected File Preview Card
-        <div className="rounded-2xl border border-indigo-500/30 bg-slate-900/90 p-5 shadow-lg">
+        <div className="rounded-2xl border border-[#262A37] bg-[#111318] p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-12 h-12 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 flex-shrink-0">
-                <FileText className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-xl bg-zinc-800/70 border border-zinc-700/60 flex items-center justify-center text-zinc-200 flex-shrink-0">
+                <FileText className="w-5 h-5" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-white truncate max-w-[280px] sm:max-w-md">
+                  <h4 className="text-xs sm:text-sm font-semibold text-zinc-100 truncate max-w-[260px] sm:max-w-md">
                     {file.name}
                   </h4>
-                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
                     {getExtensionLabel(file.name)}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1">
                   <span>{formatBytes(file.size)}</span>
                   <span>&bull;</span>
-                  <span className="text-emerald-400 flex items-center gap-1 font-medium">
+                  <span className="text-emerald-400 flex items-center gap-1 font-medium text-[11px]">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Validated & Ready for Analysis
+                    Ready for evaluation
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 type="button"
                 onClick={handleChooseClick}
-                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors cursor-pointer"
                 title="Replace resume file"
                 aria-label="Replace file"
               >
@@ -123,7 +123,7 @@ export function ResumeUploader({ file, onFileSelect, onFileRemove, error: extern
               <button
                 type="button"
                 onClick={handleRemove}
-                className="p-2 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                 title="Remove resume file"
                 aria-label="Remove file"
               >
@@ -147,30 +147,30 @@ export function ResumeUploader({ file, onFileSelect, onFileRemove, error: extern
               handleChooseClick();
             }
           }}
-          className={`relative rounded-2xl border-2 border-dashed p-8 sm:p-10 text-center transition-all duration-200 cursor-pointer ${
+          className={`relative rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-150 cursor-pointer ${
             isDragging
-              ? 'border-indigo-400 bg-indigo-950/20 scale-[1.01]'
+              ? 'border-zinc-400 bg-zinc-800/25'
               : error
               ? 'border-rose-500/50 bg-rose-950/10 hover:border-rose-400'
-              : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900/60'
+              : 'border-[#232734] hover:border-zinc-600 bg-[#0D0F14]/70 hover:bg-[#111318]'
           }`}
         >
           <div className="flex flex-col items-center">
             <div
-              className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3.5 transition-colors ${
+              className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-colors ${
                 isDragging
-                  ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-400/40'
-                  : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-600'
+                  : 'bg-zinc-800/80 text-zinc-300 border border-zinc-700/70'
               }`}
             >
-              <UploadCloud className="w-7 h-7" />
+              <UploadCloud className="w-6 h-6" />
             </div>
 
-            <p className="text-sm font-semibold text-white">
-              <span className="text-indigo-400 hover:underline">Choose your resume</span> or drag and drop here
+            <p className="text-xs sm:text-sm font-medium text-zinc-200">
+              <span className="text-white underline decoration-zinc-600 underline-offset-2 hover:decoration-white">Select resume document</span> or drag & drop here
             </p>
-            <p className="text-xs text-slate-400 mt-1.5 max-w-xs">
-              Supports <strong className="text-slate-300">PDF (.pdf)</strong> and <strong className="text-slate-300">Word (.docx)</strong> up to 5MB
+            <p className="text-[11px] text-zinc-500 mt-1 max-w-xs">
+              Supports <strong className="text-zinc-400 font-medium">PDF (.pdf)</strong> and <strong className="text-zinc-400 font-medium">Word (.docx)</strong> up to 5MB
             </p>
           </div>
         </div>

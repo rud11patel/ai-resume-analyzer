@@ -3,6 +3,7 @@ const AnalysisResult = require('../models/AnalysisResult');
 const Resume = require('../models/Resume');
 const JobDescription = require('../models/JobDescription');
 const { analyzeResumeViaPython } = require('../services/pythonAnalyzer.service');
+const { generateLlmAdvice } = require('../services/llmAdvisor.service');
 
 /**
  * List all analysis records for the current user.
@@ -116,6 +117,7 @@ async function createAnalysis(req, res, next) {
         overallScore: typeof overallScore === 'number' ? overallScore : 80,
         scoreLabel: scoreLabel || 'Demo Evaluation',
         structuredOutput: structuredOutput || {},
+        llmFeedback: req.body.llmFeedback || structuredOutput?.llmFeedback || null,
         isDemoData: true,
         completedAt: new Date(),
       });
@@ -158,12 +160,32 @@ async function createAnalysis(req, res, next) {
         company: jobDescription.company,
       });
 
+      // Attempt LLM Career Advisor generation (Grok primary, Gemini fallback)
+      let llmFeedback = null;
+      try {
+        const detectedSkillsList = (nlpResult.matchedSkills || []).map((s) => (typeof s === 'string' ? s : s.name || ''));
+        const missingSkillsList = (nlpResult.missingSkills || []).map((s) => (typeof s === 'string' ? s : s.name || ''));
+
+        llmFeedback = await generateLlmAdvice({
+          resumeText: resume.extractedText,
+          jobDescription: jobDescription.rawText,
+          matchScore: nlpResult.overallScore,
+          detectedSkills: detectedSkillsList.filter(Boolean),
+          missingSkills: missingSkillsList.filter(Boolean),
+          roleTitle: jobDescription.roleTitle,
+          company: jobDescription.company,
+        });
+      } catch (llmErr) {
+        console.warn('[Analysis Controller] Non-fatal LLM advisor error:', llmErr.message);
+      }
+
       // Update record with completed results
       analysis.status = nlpResult.status || 'completed';
       analysis.overallScore = nlpResult.overallScore;
       analysis.scoreLabel = nlpResult.scoreLabel;
       analysis.scoreBreakdown = nlpResult.scoreBreakdown || {};
       analysis.structuredOutput = nlpResult;
+      analysis.llmFeedback = llmFeedback;
       analysis.modelMetadata = nlpResult.modelMetadata || {
         engineVersion: '4.0.0',
         algorithm: 'Deterministic-Hybrid-TFIDF-Ngram',
