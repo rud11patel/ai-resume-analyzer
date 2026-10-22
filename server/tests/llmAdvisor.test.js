@@ -211,7 +211,8 @@ test('generateLlmAdvice automatically falls back to Gemini if Groq fails or time
 
       if (url.includes('generativelanguage.googleapis.com')) {
         geminiAttempted = true;
-        assert.ok(url.includes('key=working_gemini_key'));
+        const hasKey = url.includes('key=working_gemini_key') || options?.headers?.['x-goog-api-key'] === 'working_gemini_key';
+        assert.ok(hasKey);
         return {
           ok: true,
           status: 200,

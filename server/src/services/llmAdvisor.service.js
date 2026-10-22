@@ -10,7 +10,7 @@
  */
 
 const GROQ_DEFAULT_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
-const GEMINI_DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const GEMINI_DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 const DEFAULT_TIMEOUT_MS = parseInt(process.env.LLM_TIMEOUT_MS || '25000', 10);
 
 const SYSTEM_PROMPT = `You are an expert ATS auditor, senior engineering hiring manager, and executive technical recruiter.
@@ -28,10 +28,11 @@ CRITICAL ACCURACY AND GROUNDING RULES:
 
 /**
  * Builds the user prompt injecting resume text, job description, and pre-computed NLP signals.
+ * Sanitizes and caps lengths to protect against token rate limits on fast inference providers.
  */
 function buildUserPrompt({
-  resumeText,
-  jobDescription,
+  resumeText = '',
+  jobDescription = '',
   matchScore,
   detectedSkills = [],
   missingSkills = [],
@@ -39,12 +40,16 @@ function buildUserPrompt({
   company,
 }) {
   const detectedList = Array.isArray(detectedSkills) && detectedSkills.length > 0
-    ? detectedSkills.slice(0, 40).join(', ')
+    ? detectedSkills.slice(0, 35).join(', ')
     : 'None explicitly detected';
 
   const missingList = Array.isArray(missingSkills) && missingSkills.length > 0
-    ? missingSkills.slice(0, 40).join(', ')
+    ? missingSkills.slice(0, 35).join(', ')
     : 'None identified';
+
+  // Cap prompt texts to avoid hitting per-minute token quotas
+  const cleanResume = resumeText.trim().slice(0, 7500);
+  const cleanJd = jobDescription.trim().slice(0, 3500);
 
   return `TARGET ROLE: ${roleTitle || 'Target Position'}
 TARGET COMPANY: ${company || 'Target Organization'}
@@ -57,10 +62,10 @@ NLP ENGINE DETECTED MISSING SKILLS / KEYWORDS:
 ${missingList}
 
 --- TARGET JOB DESCRIPTION ---
-${jobDescription.trim()}
+${cleanJd}
 
 --- CANDIDATE RESUME TEXT ---
-${resumeText.trim()}
+${cleanResume}
 
 --- INSTRUCTIONS ---
 Perform a comprehensive fit analysis. Return a JSON object with EXACTLY this structure:
@@ -160,6 +165,7 @@ function parseAndValidateLlmOutput(rawText) {
 /**
  * Primary Provider: Groq API (High-speed LPU Inference)
  * Uses OpenAI-compatible chat completions endpoint.
+ * Optimized with low reasoning effort and token bounds for sub-second responses.
  * 
  * @param {object} params
  * @returns {Promise<object>}
@@ -190,27 +196,51 @@ async function callGroqAdvisor({
     company,
   });
 
+  const groqTimeout = Math.min(timeoutMs, 20000);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(() => controller.abort(), groqTimeout);
+
+  const requestBody = {
+    model,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.2,
+    response_format: { type: 'json_object' },
+    max_completion_tokens: 2048,
+  };
+
+  // Optimize reasoning models like openai/gpt-oss-20b for fast response and minimal token overhead
+  if (model.includes('gpt-oss') || model.includes('o1') || model.includes('o3')) {
+    requestBody.reasoning_effort = 'low';
+  }
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const startTime = Date.now();
+    let response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.2,
-        response_format: { type: 'json_object' },
-      }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
+
+    // Quick retry once on 429 rate limit or 503 capacity
+    if (response.status === 429 || response.status === 503) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+    }
 
     clearTimeout(timeoutId);
 
@@ -221,12 +251,15 @@ async function callGroqAdvisor({
       throw new Error(`Groq API error (${response.status}): ${errMsg}`);
     }
 
-    const rawContent = data?.choices?.[0]?.message?.content;
+    const rawContent = data?.choices?.[0]?.message?.content || data?.output_text;
     if (!rawContent) {
       throw new Error('Groq returned an empty response body.');
     }
 
     const validated = parseAndValidateLlmOutput(rawContent);
+    const duration = Date.now() - startTime;
+    console.info(`[LLM Advisor] Groq (${model}) completed in ${duration}ms.`);
+
     return {
       ...validated,
       providerUsed: 'groq',
@@ -236,15 +269,15 @@ async function callGroqAdvisor({
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error(`Groq API request timed out after ${timeoutMs}ms.`);
+      throw new Error(`Groq API request timed out after ${groqTimeout}ms.`);
     }
     throw err;
   }
 }
 
 /**
- * Fallback Provider: Google Gemini REST API
- * Invoked automatically if Groq is unavailable, unconfigured, or fails.
+ * Fallback Provider: Google Gemini API
+ * Supports both Google's Interactions API and generateContent with automatic retry on 503.
  * 
  * @param {object} params
  * @returns {Promise<object>}
@@ -275,51 +308,125 @@ async function callGeminiAdvisor({
     company,
   });
 
-  const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-
+  const geminiTimeout = Math.min(timeoutMs, 25000);
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(() => controller.abort(), geminiTimeout);
+
+  const fullPromptText = `${SYSTEM_PROMPT}\n\n${userPrompt}\n\nIMPORTANT: Return ONLY valid, parseable JSON conforming strictly to the requested schema.`;
 
   try {
-    const response = await fetch(targetUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [
+    const startTime = Date.now();
+    let rawContent = null;
+
+    // 1. First attempt: Modern Interactions API (standard for gemini-3.8-flash)
+    try {
+      let intResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          model,
+          input: fullPromptText,
+        }),
+        signal: controller.signal,
+      });
+
+      // If 503 demand spike, wait 1.5s and retry once
+      if (intResponse.status === 503) {
+        await new Promise((res) => setTimeout(res, 1500));
+        intResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            model,
+            input: fullPromptText,
+          }),
+          signal: controller.signal,
+        });
+      }
+
+      if (intResponse.ok) {
+        const intData = await intResponse.json().catch(() => null);
+        rawContent = intData?.output_text
+          || intData?.steps?.[intData.steps.length - 1]?.content?.[0]?.text
+          || (typeof intData?.output === 'string' ? intData.output : null);
+      }
+    } catch (intErr) {
+      // Continue to generateContent fallback
+    }
+
+    // 2. Second attempt: generateContent endpoint if Interactions did not produce content
+    if (!rawContent) {
+      const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+      let genResponse = await fetch(genUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: fullPromptText }],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+          },
+        }),
+        signal: controller.signal,
+      });
+
+      if (genResponse.status === 503) {
+        await new Promise((res) => setTimeout(res, 1500));
+        genResponse = await fetch(genUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            contents: [
               {
-                text: `${SYSTEM_PROMPT}\n\n${userPrompt}`,
+                role: 'user',
+                parts: [{ text: fullPromptText }],
               },
             ],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-        },
-      }),
-      signal: controller.signal,
-    });
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+            },
+          }),
+          signal: controller.signal,
+        });
+      }
+
+      const genData = await genResponse.json().catch(() => null);
+      if (!genResponse.ok) {
+        const errMsg = genData?.error?.message || `HTTP ${genResponse.status} ${genResponse.statusText}`;
+        throw new Error(`Google Gemini API error (${genResponse.status}): ${errMsg}`);
+      }
+
+      rawContent = genData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    }
 
     clearTimeout(timeoutId);
 
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      const errMsg = data?.error?.message || `HTTP ${response.status} ${response.statusText}`;
-      throw new Error(`Google Gemini API error (${response.status}): ${errMsg}`);
-    }
-
-    const rawContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawContent) {
       throw new Error('Google Gemini returned an empty response body.');
     }
 
     const validated = parseAndValidateLlmOutput(rawContent);
+    const duration = Date.now() - startTime;
+    console.info(`[LLM Advisor] Gemini (${model}) completed in ${duration}ms.`);
+
     return {
       ...validated,
       providerUsed: 'gemini',
@@ -329,7 +436,7 @@ async function callGeminiAdvisor({
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error(`Google Gemini API request timed out after ${timeoutMs}ms.`);
+      throw new Error(`Google Gemini API request timed out after ${geminiTimeout}ms.`);
     }
     throw err;
   }
@@ -361,7 +468,7 @@ async function generateLlmAdvice(params) {
   if (hasGroqKey) {
     try {
       result = await callGroqAdvisor(params);
-      return result;
+      if (result) return result;
     } catch (err) {
       console.warn(`[LLM Advisor] Primary provider (Groq) failed: ${err.message}. Initiating Gemini fallback...`);
     }
@@ -373,7 +480,7 @@ async function generateLlmAdvice(params) {
   if (hasGeminiKey) {
     try {
       result = await callGeminiAdvisor(params);
-      return result;
+      if (result) return result;
     } catch (geminiErr) {
       console.warn(`[LLM Advisor] Fallback provider (Gemini) failed: ${geminiErr.message}.`);
     }
