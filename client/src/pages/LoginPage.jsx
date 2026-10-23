@@ -18,8 +18,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useMockAuth();
 
-  const [email, setEmail] = useState('alex.morgan@example.com');
-  const [password, setPassword] = useState('DemoPassword123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);

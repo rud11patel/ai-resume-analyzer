@@ -3,14 +3,10 @@ import {
   Sparkles, 
   CheckCircle2, 
   AlertTriangle, 
-  AlertCircle, 
   Copy, 
   Check, 
-  Bot, 
   Target, 
-  Briefcase, 
   Zap, 
-  Info,
   Layers
 } from 'lucide-react';
 
@@ -19,8 +15,6 @@ import {
  * 
  * Displays personalized AI Recruiter critique, grounded candidate strengths,
  * categorized gap analysis, and tailored bullet point rewrites.
- * 
- * Supports both xAI Grok and Google Gemini providers with provider metadata badges.
  */
 export function LlmAdvisorFeedback({ llmFeedback }) {
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -31,52 +25,26 @@ export function LlmAdvisorFeedback({ llmFeedback }) {
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  // If no LLM feedback was generated (e.g. providers unconfigured or both failed)
+  // If no LLM feedback was generated or available, render nothing to client users
   if (!llmFeedback) {
-    return (
-      <section className="p-6 sm:p-7 rounded-2xl bg-[#111318] border border-[#232734] shadow-sm space-y-3">
-        <div className="flex items-center gap-2 pb-2 border-b border-[#232734]">
-          <Bot className="w-5 h-5 text-zinc-400" />
-          <h3 className="text-sm sm:text-base font-semibold text-zinc-100 tracking-tight">
-            LLM Career Advisor
-          </h3>
-        </div>
-        <div className="p-4 rounded-xl bg-[#0D0F14] border border-[#1E222D] flex items-start gap-3">
-          <Info className="w-4 h-4 text-zinc-500 mt-0.5 flex-shrink-0" />
-          <div className="text-xs text-zinc-400 space-y-1">
-            <p className="font-medium text-zinc-300">
-              Personalized LLM Analysis Ready
-            </p>
-            <p className="leading-relaxed">
-              To activate live AI recruiter critiques powered by <strong>Groq (LPU)</strong> with automatic <strong>Google Gemini</strong> fallback, configure your <code className="text-zinc-200 bg-zinc-800/80 px-1 py-0.5 rounded font-mono text-[11px]">GROQ_API_KEY</code> or <code className="text-zinc-200 bg-zinc-800/80 px-1 py-0.5 rounded font-mono text-[11px]">GEMINI_API_KEY</code> in the server <code className="text-zinc-200 bg-zinc-800/80 px-1 py-0.5 rounded font-mono text-[11px]">.env</code> file.
-            </p>
-          </div>
-        </div>
-      </section>
-    );
+    return null;
   }
 
   const {
-    providerUsed = 'AI',
-    modelUsed,
     executiveSummary,
     strengths = [],
     criticalGaps = [],
     actionableRecommendations = [],
   } = llmFeedback;
 
-  const isGroq = (providerUsed || '').toLowerCase().includes('groq');
-  const isGemini = (providerUsed || '').toLowerCase().includes('gemini');
-
-  const providerLabel = isGroq
-    ? 'Groq (LPU)'
-    : isGemini
-    ? 'Google Gemini'
-    : providerUsed.toUpperCase();
+  // If feedback object exists but has no substantive content, avoid rendering an empty card
+  if (!executiveSummary && strengths.length === 0 && criticalGaps.length === 0 && actionableRecommendations.length === 0) {
+    return null;
+  }
 
   return (
     <section className="p-6 sm:p-7 rounded-2xl bg-[#111318] border border-[#232734] shadow-sm space-y-6">
-      {/* Header with Provider Branding */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#232734]">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 text-indigo-400">
@@ -92,17 +60,12 @@ export function LlmAdvisorFeedback({ llmFeedback }) {
           </div>
         </div>
 
-        {/* Model & Provider Badge */}
+        {/* Client-Facing Assessment Badge */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#141824] text-indigo-300 border border-indigo-500/30">
-            <Bot className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Powered by <strong>{providerLabel}</strong></span>
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <span>AI Executive Assessment</span>
           </span>
-          {modelUsed && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800/80 text-zinc-400 border border-zinc-700">
-              {modelUsed}
-            </span>
-          )}
         </div>
       </div>
 

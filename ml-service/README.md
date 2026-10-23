@@ -56,16 +56,20 @@ ml-service/
 
 ## Scoring Formula & Weights
 
-The compatibility score is deterministic, explainable, and strictly bounded between 0 and 100:
+The compatibility score is deterministic, evidence-based, explainable, and strictly bounded between 0 and 100:
 
-$$\text{OverallScore} = 0.40 \cdot S_{\text{req}} + 0.15 \cdot S_{\text{pref}} + 0.20 \cdot S_{\text{exp}} + 0.15 \cdot S_{\text{kw}} + 0.10 \cdot S_{\text{ats}}$$
+$$\text{OverallScore} = w_{\text{req}} \cdot S_{\text{req}} + w_{\text{exp}} \cdot S_{\text{exp}} + w_{\text{edu}} \cdot S_{\text{edu}} + w_{\text{pref}} \cdot S_{\text{pref}} + w_{\text{role}} \cdot S_{\text{role}}$$
 
-### Weight Rationale:
-- **Required Skills ($S_{\text{req}}$, 40%)**: Core technical qualifications are the primary hiring filter. Partial matches receive 50% credit; missing required skills significantly lower the score.
-- **Preferred Skills ($S_{\text{pref}}$, 15%)**: Bonus/optional qualifications differentiate candidates without disqualifying them.
-- **Experience Relevance ($S_{\text{exp}}$, 20%)**: Career tenure and project accomplishments validate practical depth.
-- **Keyword Density ($S_{\text{kw}}$, 15%)**: Technical vocabulary alignment ensures ATS searchability.
-- **ATS Formatting ($S_{\text{ats}}$, 10%)**: Document layout, contact information, and standard section headings.
+### Baseline Weight Model:
+- **Required Skills ($S_{\text{req}}$, 50%)**: Non-negotiable technical requirements are the primary filter. Missing mandatory skills heavily penalize the score; zero matched required skills triggers an explainable cap (15%).
+- **Experience & Project Relevance ($S_{\text{exp}}$, 25%)**: Relevance-aware evaluation combining career tenure against seniority targets (65%) and verified project technological overlap (35%). No unconditional project-count bonuses.
+- **Education & Eligibility ($S_{\text{edu}}$, 10%)**: Degree level and baseline academic qualifications.
+- **Preferred Skills ($S_{\text{pref}}$, 10%)**: Secondary bonus qualifications.
+- **Role-Specific Alignment ($S_{\text{role}}$, 5%)**: Distinct domain concepts and engineering practices without double-counting technical skills.
+- **ATS Formatting ($S_{\text{ats}}$, Independent)**: Formatting, layout hygiene, and contact info are evaluated separately and excluded from the job compatibility score so layout quality does not falsely inflate candidate suitability.
+
+### Proportional Normalization Policy:
+When a dimension is not applicable (e.g., the job description specifies no preferred qualifications), its weight is set to $0.0$ and the remaining active base weights are scaled proportionally so their sum is strictly $1.00$ (100%). No arbitrary free points (e.g. 80/100 default) are awarded.
 
 ---
 

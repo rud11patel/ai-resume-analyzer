@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Activity, CheckCircle2, AlertCircle, RefreshCw, X } from 'lucide-react';
 import { useHealthCheck } from '../../hooks/useHealthCheck';
-import { API_BASE_URL } from '../../services/api';
 
 export function ApiHealthBadge({ showDetailsModal = true }) {
   const { health, loading, refetch } = useHealthCheck();
@@ -16,7 +15,7 @@ export function ApiHealthBadge({ showDetailsModal = true }) {
         type="button"
         onClick={() => setIsOpen(true)}
         className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs font-mono font-medium border transition-colors cursor-pointer bg-[#111318] hover:bg-[#16181F] border-[#232734] text-zinc-300"
-        title="Backend API Connection Status"
+        title="System Connection Status"
       >
         <span className="relative flex h-2 w-2">
           {isOnline ? (
@@ -29,7 +28,7 @@ export function ApiHealthBadge({ showDetailsModal = true }) {
           )}
         </span>
         <span className="text-[11px] hidden sm:inline text-zinc-400">
-          {isOnline ? 'API Connected' : 'Local Standby'}
+          {isOnline ? 'System Online' : 'Standby'}
         </span>
       </button>
 
@@ -55,24 +54,19 @@ export function ApiHealthBadge({ showDetailsModal = true }) {
 
             <div className="py-4 space-y-3 text-xs">
               <div className="flex items-center justify-between py-1.5 border-b border-[#232734]/70">
-                <span className="text-zinc-400">API Server:</span>
+                <span className="text-zinc-400">Analysis Service:</span>
                 <span className={`font-semibold flex items-center gap-1 ${isOnline ? 'text-emerald-400' : 'text-amber-400'}`}>
                   {isOnline ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-                  {isOnline ? 'Operational' : 'Mock Active'}
+                  {isOnline ? 'Operational' : 'Standby'}
                 </span>
               </div>
 
               <div className="flex items-center justify-between py-1.5 border-b border-[#232734]/70">
-                <span className="text-zinc-400">Database:</span>
+                <span className="text-zinc-400">Data Storage:</span>
                 <span className={`font-semibold flex items-center gap-1 ${isDbConnected ? 'text-emerald-400' : 'text-zinc-500'}`}>
                   {isDbConnected ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-                  {isDbConnected ? 'Connected' : 'Offline / Standby'}
+                  {isDbConnected ? 'Connected' : 'Local Storage Mode'}
                 </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1.5 border-b border-[#232734]/70">
-                <span className="text-zinc-400">Target Endpoint:</span>
-                <span className="font-mono text-zinc-400 truncate max-w-[180px] text-[11px]">{API_BASE_URL}</span>
               </div>
 
               <p className="text-[11px] text-zinc-500 pt-1 leading-relaxed">

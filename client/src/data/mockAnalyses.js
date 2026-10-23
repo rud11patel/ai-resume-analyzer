@@ -117,8 +117,6 @@ export const INITIAL_MOCK_ANALYSES = [
       { item: 'Chronological timeline order', status: 'Warning', message: 'Ensure most recent employment is listed first without date overlaps.' },
     ],
     llmFeedback: {
-      providerUsed: 'groq',
-      modelUsed: 'openai/gpt-oss-20b',
       generatedAt: '2026-10-12T10:30:15.000Z',
       executiveSummary: 'Candidate presents a strong frontend foundation with extensive React, TypeScript, and modern styling experience that aligns closely with Stripe\'s core UI engineering requirements. Primary gap is lack of documented end-to-end testing (Cypress/Playwright) and containerization in production environments.',
       strengths: [

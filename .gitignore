@@ -59,10 +59,35 @@ lerna-debug.log*
 .DS_Store
 Thumbs.db
 
-# Testing
+# Testing & Test Files
+tests/
+test/
+__tests__/
+**/tests/
+**/test/
+**/__tests__/
+fixtures/
+**/fixtures/
+*.test.js
+*.test.jsx
+*.test.ts
+*.test.tsx
+*.spec.js
+*.spec.jsx
+*.spec.ts
+*.spec.tsx
+test_*.py
+*_test.py
+conftest.py
 coverage/
 .nyc_output/
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.lcov
+.tox/
+.nox/
 
 # Uploaded candidate files
 uploads/

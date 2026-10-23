@@ -3,16 +3,6 @@ import { authApi, getStoredToken } from '../services/api';
 
 const AUTH_STORAGE_KEY = 'ai_resume_analyzer_user';
 
-const DEFAULT_DEMO_USER = {
-  id: 'usr-demo-01',
-  name: 'Alex Morgan',
-  email: 'alex.morgan@example.com',
-  title: 'Full Stack Engineer',
-  avatarUrl: null,
-  isAuthenticated: true,
-  isBackendAuthenticated: false,
-};
-
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -117,13 +107,13 @@ export function AuthProvider({ children }) {
       const nameFromEmail = email.split('@')[0]
         .split('.')
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ') || 'Alex Morgan';
+        .join(' ') || 'User';
 
       const newUser = {
         id: `usr-${Date.now().toString(36)}`,
         name: nameFromEmail,
         email: email.trim().toLowerCase(),
-        title: 'Software Engineer',
+        title: 'Candidate',
         avatarUrl: null,
         isAuthenticated: true,
         isBackendAuthenticated: false,
@@ -164,9 +154,9 @@ export function AuthProvider({ children }) {
 
       const newUser = {
         id: `usr-${Date.now().toString(36)}`,
-        name: name.trim() || 'Alex Morgan',
+        name: name.trim() || 'User',
         email: email.trim().toLowerCase(),
-        title: 'Candidate / Software Engineer',
+        title: 'Candidate',
         avatarUrl: null,
         isAuthenticated: true,
         isBackendAuthenticated: false,

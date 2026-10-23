@@ -135,6 +135,8 @@ class ScoreBreakdown(BaseModel):
 class AnalysisResponse(BaseModel):
     status: str = "completed"  # 'completed' or 'insufficient_data'
     overallScore: int
+    jobCompatibilityScore: Optional[int] = None
+    atsFormattingScore: Optional[int] = None
     scoreLabel: str
     subScores: SubScores
     scoreBreakdown: ScoreBreakdown

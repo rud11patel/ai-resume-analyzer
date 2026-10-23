@@ -1,55 +1,81 @@
-import { INITIAL_MOCK_ANALYSES } from '../data/mockAnalyses';
 import { analysesApi } from './api';
 
-const STORAGE_KEY = 'ai_resume_analyzer_mock_history_v1';
+const STORAGE_PREFIX = 'ai_resume_analyses_';
+
+// Automatically clean up legacy shared mock storage from older versions
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.removeItem('ai_resume_analyzer_mock_history_v1');
+  }
+} catch {}
 
 /**
- * Helper to get all stored analyses or seed initial mock records
+ * Returns user-specific localStorage key to prevent cross-user data leakage
  */
-export function getStoredAnalyses() {
+export function getUserStorageKey(userId) {
+  if (!userId) return null;
+  return `${STORAGE_PREFIX}${userId}`;
+}
+
+/**
+ * Helper to get stored analyses for a specific authenticated user.
+ * Returns an empty array if no records exist for this user.
+ */
+export function getStoredAnalyses(userId) {
+  if (!userId) return [];
+  const key = getUserStorageKey(userId);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_MOCK_ANALYSES));
-      return INITIAL_MOCK_ANALYSES;
-    }
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_MOCK_ANALYSES));
-      return INITIAL_MOCK_ANALYSES;
-    }
-    return parsed;
+    return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
-    console.warn('Failed to read localStorage, falling back to initial mock analyses:', err);
-    return INITIAL_MOCK_ANALYSES;
+    console.warn('Failed to read user-scoped localStorage:', err);
+    return [];
   }
 }
 
 /**
- * Save analyses array to localStorage
+ * Save analyses array to user-scoped localStorage
  */
-function saveAnalyses(analyses) {
+export function saveAnalyses(analyses, userId) {
+  if (!userId) return;
+  const key = getUserStorageKey(userId);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(analyses));
+    localStorage.setItem(key, JSON.stringify(analyses));
   } catch (err) {
     console.warn('Failed to save analyses to localStorage:', err);
   }
 }
 
 /**
- * Fetch all analyses
+ * Clear all stored evaluations for a specific user
  */
-export async function fetchAnalyses() {
-  // Simulate slight asynchronous behavior
-  await new Promise((res) => setTimeout(res, 120));
-  return getStoredAnalyses();
+export function clearUserAnalyses(userId) {
+  if (!userId) return;
+  const key = getUserStorageKey(userId);
+  try {
+    localStorage.removeItem(key);
+  } catch (err) {
+    console.warn('Failed to clear user analyses:', err);
+  }
 }
 
 /**
- * Fetch single analysis by ID
- * @param {string} id 
+ * Fetch analyses for the authenticated user
  */
-export async function fetchAnalysisById(id) {
+export async function fetchAnalyses(userId) {
+  if (!userId) return [];
+  await new Promise((res) => setTimeout(res, 100));
+  return getStoredAnalyses(userId);
+}
+
+/**
+ * Fetch single analysis by ID with strict ownership validation
+ * @param {string} id 
+ * @param {string} [userId]
+ */
+export async function fetchAnalysisById(id, userId) {
   // If MongoDB ObjectId, fetch directly from backend API
   if (id && /^[0-9a-fA-F]{24}$/.test(id)) {
     try {
@@ -99,34 +125,47 @@ export async function fetchAnalysisById(id) {
         };
       }
     } catch (err) {
-      console.warn('[mockAnalysisService] Backend analysis fetch failed, falling back to local store:', err.message);
+      // If backend explicitly rejected (404 Not Found, 401 Unauthorized, 403 Forbidden), access denied
+      console.warn('[mockAnalysisService] Backend analysis fetch failed:', err.message);
+      if (err.status === 404 || err.status === 401 || err.status === 403) {
+        return null;
+      }
     }
   }
 
-  await new Promise((res) => setTimeout(res, 120));
-  const list = getStoredAnalyses();
-  const found = list.find((item) => item.id === id);
-  return found || null;
+  // If local ID, lookup ONLY in the authenticated user's isolated local records
+  if (userId) {
+    await new Promise((res) => setTimeout(res, 100));
+    const list = getStoredAnalyses(userId);
+    const found = list.find((item) => item.id === id);
+    if (found) return found;
+  }
+
+  return null;
 }
 
 /**
- * Delete an analysis record
+ * Delete an analysis record for the current user
  * @param {string} id 
+ * @param {string} [userId]
  */
-export async function deleteAnalysisById(id) {
-  await new Promise((res) => setTimeout(res, 150));
-  const current = getStoredAnalyses();
+export async function deleteAnalysisById(id, userId) {
+  if (!userId) return false;
+  await new Promise((res) => setTimeout(res, 100));
+  const current = getStoredAnalyses(userId);
   const filtered = current.filter((item) => item.id !== id);
-  saveAnalyses(filtered);
+  saveAnalyses(filtered, userId);
   return true;
 }
 
 /**
- * Reset history back to default sample records
+ * Reset history for a specific user to an empty state
  */
-export function resetAnalysesToDefault() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_MOCK_ANALYSES));
-  return INITIAL_MOCK_ANALYSES;
+export function resetAnalysesToDefault(userId) {
+  if (userId) {
+    clearUserAnalyses(userId);
+  }
+  return [];
 }
 
 /**
@@ -134,7 +173,7 @@ export function resetAnalysesToDefault() {
  * NOTE: This is client-side mock evaluation for Phase 2 UI development.
  * Real ML text extraction & LLM inference will be connected in Phase 4.
  */
-export async function simulateAnalyzeResume({ file, roleTitle, company, jobDescription }) {
+export async function simulateAnalyzeResume({ file, roleTitle, company, jobDescription, userId }) {
   // Simulate analysis pipeline delay: 1800ms
   await new Promise((res) => setTimeout(res, 1800));
 
@@ -288,10 +327,12 @@ export async function simulateAnalyzeResume({ file, roleTitle, company, jobDescr
     isMock: true,
   };
 
-  // Add to stored history
-  const current = getStoredAnalyses();
-  const updated = [newAnalysis, ...current];
-  saveAnalyses(updated);
+  // Add to user-specific stored history
+  if (userId) {
+    const current = getStoredAnalyses(userId);
+    const updated = [newAnalysis, ...current];
+    saveAnalyses(updated, userId);
+  }
 
   return newAnalysis;
 }

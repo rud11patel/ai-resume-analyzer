@@ -12,52 +12,66 @@ export function useAnalysisHistory() {
   const [selectedScoreTier, setSelectedScoreTier] = useState('all'); // 'all', 'high', 'medium', 'low'
   const [sortBy, setSortBy] = useState('date-desc'); // 'date-desc', 'date-asc', 'score-desc', 'score-asc'
 
+  const userKey = user?.id || user?.email;
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    // If authenticated with backend, fetch user's real persisted analysis records
-    if (isAuthenticated) {
-      try {
-        const backendAnalyses = await analysesApi.getAll();
-        const mapped = backendAnalyses.map((a) => {
-          const structured = a.structuredOutput || {};
-          return {
-            id: a._id || a.id,
-            roleTitle: a.jobDescriptionId?.roleTitle || structured.jobRequirements?.roleTitle || 'Target Role',
-            company: a.jobDescriptionId?.company || structured.jobRequirements?.company || 'Target Company',
-            fileName: a.resumeId?.originalName || 'Resume.pdf',
-            fileSize: a.resumeId?.fileSize || 50000,
-            fileType: a.resumeId?.fileType || 'application/pdf',
-            overallScore: a.overallScore ?? structured.overallScore ?? 0,
-            scoreLabel: a.scoreLabel || structured.scoreLabel || 'Evaluation',
-            createdAt: a.createdAt,
-            status: a.status || 'completed',
-            isDemoData: a.isDemoData ?? false,
-            subScores: structured.subScores || null,
-          };
-        });
-
-        setAnalyses(mapped);
-        setLoading(false);
-        return;
-      } catch (err) {
-        console.warn('[useAnalysisHistory] Backend fetch failed, falling back to local history:', err.message);
-        setError(err.message);
-      }
+    // If not authenticated or no user context, clear analyses immediately
+    if (!isAuthenticated || !userKey) {
+      setAnalyses([]);
+      setLoading(false);
+      return;
     }
 
-    // Fallback: If not backend-authenticated, fetch local demo records
+    // 1. Fetch user's real persisted analysis records from the backend API
     try {
-      const data = await fetchAnalyses();
-      setAnalyses(data);
+      const backendAnalyses = await analysesApi.getAll();
+      const mapped = (backendAnalyses || []).map((a) => {
+        const structured = a.structuredOutput || {};
+        return {
+          id: a._id || a.id,
+          roleTitle: a.jobDescriptionId?.roleTitle || structured.jobRequirements?.roleTitle || 'Target Role',
+          company: a.jobDescriptionId?.company || structured.jobRequirements?.company || 'Target Company',
+          fileName: a.resumeId?.originalName || 'Resume.pdf',
+          fileSize: a.resumeId?.fileSize || 50000,
+          fileType: a.resumeId?.fileType || 'application/pdf',
+          overallScore: a.overallScore ?? structured.overallScore ?? 0,
+          scoreLabel: a.scoreLabel || structured.scoreLabel || 'Evaluation',
+          createdAt: a.createdAt,
+          status: a.status || 'completed',
+          isDemoData: a.isDemoData ?? false,
+          subScores: structured.subScores || null,
+        };
+      });
+
+      // Strict user isolation: mapped results belong solely to this authenticated user
+      setAnalyses(mapped);
+      setLoading(false);
+      return;
     } catch (err) {
-      console.error('Failed to load local analysis history:', err);
+      // If user session is invalid (401/403), keep history empty
+      if (err.status === 401 || err.status === 403) {
+        setAnalyses([]);
+        setLoading(false);
+        return;
+      }
+      console.warn('[useAnalysisHistory] Backend fetch failed, checking user-isolated local store:', err.message);
+      setError(err.message);
+    }
+
+    // 2. Offline fallback: retrieve ONLY this specific user's scoped local evaluations
+    try {
+      const data = await fetchAnalyses(userKey);
+      setAnalyses(data || []);
+    } catch (err) {
+      console.error('Failed to load user local analysis history:', err);
       setAnalyses([]);
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userKey]);
 
   useEffect(() => {
     loadData();
@@ -71,17 +85,19 @@ export function useAnalysisHistory() {
       } catch (err) {
         console.warn('[useAnalysisHistory] Backend delete failed:', err.message);
       }
-    } else {
-      await deleteAnalysisById(id);
+    } else if (userKey) {
+      await deleteAnalysisById(id, userKey);
     }
 
     setAnalyses((prev) => prev.filter((item) => item.id !== id));
-  }, []);
+  }, [userKey]);
 
   const resetHistory = useCallback(() => {
-    const defaults = resetAnalysesToDefault();
-    setAnalyses(defaults);
-  }, []);
+    if (userKey) {
+      resetAnalysesToDefault(userKey);
+    }
+    setAnalyses([]);
+  }, [userKey]);
 
   // Filtered and sorted analyses
   const filteredAnalyses = useMemo(() => {

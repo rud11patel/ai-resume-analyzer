@@ -19,7 +19,7 @@ export function RegisterPage() {
   const navigate = useNavigate();
   const { signup } = useMockAuth();
 
-  const [name, setName] = useState('Alex Morgan');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -95,7 +95,7 @@ export function RegisterPage() {
               type="text"
               required
               icon={User}
-              placeholder="e.g. Alex Morgan"
+              placeholder="e.g. Jane Doe"
               value={name}
               onChange={(e) => {
                 setName(e.target.value);

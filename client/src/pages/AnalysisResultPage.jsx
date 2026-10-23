@@ -27,11 +27,13 @@ import { LlmAdvisorFeedback } from '../components/analysis/LlmAdvisorFeedback';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+import { useMockAuth } from '../hooks/useMockAuth';
 import { formatDate, formatBytes, getScoreTheme } from '../utils/formatters';
 
 export function AnalysisResultPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useMockAuth();
 
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,8 @@ export function AnalysisResultPage() {
     async function loadReport() {
       setLoading(true);
       try {
-        const data = await fetchAnalysisById(id);
+        const userKey = user?.id || user?.email;
+        const data = await fetchAnalysisById(id, userKey);
         setAnalysis(data);
       } catch (err) {
         console.error('Error fetching analysis report:', err);
@@ -50,7 +53,7 @@ export function AnalysisResultPage() {
       }
     }
     loadReport();
-  }, [id]);
+  }, [id, user]);
 
   const handleCopyBullet = (text, index) => {
     navigator.clipboard.writeText(text);

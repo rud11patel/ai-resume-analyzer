@@ -24,9 +24,9 @@ export function SettingsPage() {
   const navigate = useNavigate();
 
   // Profile Form State
-  const [name, setName] = useState(user?.name || 'Alex Morgan');
-  const [title, setTitle] = useState(user?.title || 'Full Stack Engineer');
-  const [email, setEmail] = useState(user?.email || 'alex.morgan@example.com');
+  const [name, setName] = useState(user?.name || '');
+  const [title, setTitle] = useState(user?.title || 'Candidate');
+  const [email, setEmail] = useState(user?.email || '');
   const [targetLevel, setTargetLevel] = useState('Senior');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -139,21 +139,21 @@ export function SettingsPage() {
         </form>
       </section>
 
-      {/* 2. Demonstration Workspace Data Management */}
+      {/* 2. Workspace Data Management */}
       <section className="p-6 sm:p-7 rounded-2xl bg-[#111318] border border-[#232734] shadow-sm space-y-4">
         <div className="flex items-center gap-2 pb-3 border-b border-[#232734]">
           <RotateCcw className="w-4 h-4 text-zinc-400" />
           <div>
             <h2 className="text-sm sm:text-base font-semibold text-zinc-100">Data Management</h2>
-            <p className="text-xs text-zinc-400">Manage sample evaluation records stored in browser storage.</p>
+            <p className="text-xs text-zinc-400">Manage saved evaluation records for this session.</p>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-[#0D0F14] border border-[#232734] text-xs">
           <div>
-            <h4 className="font-semibold text-zinc-200">Reset Sample Evaluations</h4>
+            <h4 className="font-semibold text-zinc-200">Clear Saved Evaluations</h4>
             <p className="text-zinc-500 mt-0.5">
-              Restores initial evaluation reports ({analyses.length} currently saved).
+              Clears your local evaluation history ({analyses.length} currently saved).
             </p>
           </div>
           <Button
@@ -161,8 +161,9 @@ export function SettingsPage() {
             size="sm"
             icon={RotateCcw}
             onClick={() => setIsResetModalOpen(true)}
+            disabled={analyses.length === 0}
           >
-            Reset to Defaults
+            Clear History
           </Button>
         </div>
       </section>
@@ -176,7 +177,7 @@ export function SettingsPage() {
               System & Service Diagnostics
             </h2>
             <p className="text-xs text-zinc-400">
-              Live status probe of Node.js API and database connectivity.
+              Live status probe of analysis services and database connectivity.
             </p>
           </div>
         </div>
@@ -189,14 +190,14 @@ export function SettingsPage() {
         />
       </section>
 
-      {/* Reset Confirmation Modal */}
+      {/* Clear Confirmation Modal */}
       <Modal
         isOpen={isResetModalOpen}
         onClose={() => setIsResetModalOpen(false)}
-        title="Reset Sample Records?"
-        description="This will restore the standard evaluation records. Custom analyses will be replaced."
-        confirmText="Confirm Reset"
-        confirmVariant="primary"
+        title="Clear Evaluation History?"
+        description="This will clear your saved evaluation records from this browser session. This action cannot be undone."
+        confirmText="Confirm Clear"
+        confirmVariant="danger"
         onConfirm={handleResetData}
       />
     </div>
