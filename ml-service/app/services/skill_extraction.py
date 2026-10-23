@@ -19,12 +19,22 @@ MONTHS_MAP = {
 }
 
 YEARS_EXPLICIT_REGEX = re.compile(
-    r"(\b\d{1,2}(?:\.\d+)?)\+?\s*(?:years?|yrs?)(?:\s+of)?(?:\s+(?:experience|work|software|engineering|industry))?\b",
+    r"(\b\d{1,2}(?:\.\d+)?)\+?\s*(?:years?|yrs?)(?:\s+of)?(?:\s+(?:experience|work|software|engineering|industry|embedded|hardware|clinical))?\b",
     re.IGNORECASE,
 )
 
 DATE_RANGE_REGEX = re.compile(
     r"\b(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+)?(20\d\d|19\d\d)\s*(?:-|–|to)\s*(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+)?(present|current|20\d\d)\b",
+    re.IGNORECASE,
+)
+
+DATE_NUMERIC_RANGE_REGEX = re.compile(
+    r"\b(0?[1-9]|1[0-2])[\./](20\d\d|19\d\d)\s*(?:-|–|to)\s*(?:(0?[1-9]|1[0-2])[\./])?(present|current|20\d\d)\b",
+    re.IGNORECASE,
+)
+
+YEAR_ONLY_RANGE_REGEX = re.compile(
+    r"\b(20\d\d|19\d\d)\s*(?:-|–|to)\s*(present|current|20\d\d)\b",
     re.IGNORECASE,
 )
 
@@ -36,7 +46,9 @@ DEGREE_MENTIONS = [
 ]
 
 DISCIPLINE_PATTERNS = [
-    (re.compile(r"\b(?:computer\s+science|software\s+engineering|information\s+technology|electrical\s+engineering|computer\s+engineering|data\s+science|informatics)\b", re.IGNORECASE), "technology"),
+    (re.compile(r"\b(?:electrical\s+engineering|electronics(?:\s+engineering)?|hardware\s+engineering|bsee|msee|microelectronics|mechatronics)\b", re.IGNORECASE), "hardware_engineering"),
+    (re.compile(r"\b(?:computer\s+engineering)\b", re.IGNORECASE), "computer_engineering"),
+    (re.compile(r"\b(?:computer\s+science|software\s+engineering|information\s+technology|data\s+science|informatics|bscs|mscs)\b", re.IGNORECASE), "software_cs"),
     (re.compile(r"\b(?:nursing|clinical|medicine|healthcare|bsn|msn|registered\s+nurse|health\s+sciences)\b", re.IGNORECASE), "healthcare"),
     (re.compile(r"\b(?:accounting|finance|business\s+administration|economics|mba)\b", re.IGNORECASE), "business"),
 ]
@@ -167,35 +179,79 @@ def extract_resume_profile(text: str) -> Dict[str, Any]:
         except ValueError:
             pass
 
-    # Extract date intervals with months and merge overlaps
+    # Extract date intervals with months/numeric ranges and merge overlaps
     if total_years == 0.0:
-        raw_intervals: List[Tuple[int, int]] = []
-        for m_start, y_start, m_end, y_end in DATE_RANGE_REGEX.findall(exp_text):
-            try:
-                s_yr = int(y_start)
-                s_mo = MONTHS_MAP.get((m_start or "").lower(), 1)
-                s_idx = s_yr * 12 + s_mo
+        texts_to_scan = [exp_text, cleaned] if exp_text else [cleaned]
+        for scan_text in texts_to_scan:
+            raw_intervals: List[Tuple[int, int]] = []
+            
+            # Word-month ranges (e.g. Jan 2021 - Present)
+            for m_start, y_start, m_end, y_end in DATE_RANGE_REGEX.findall(scan_text):
+                try:
+                    s_yr = int(y_start)
+                    s_mo = MONTHS_MAP.get((m_start or "").lower(), 1)
+                    s_idx = s_yr * 12 + s_mo
 
-                if any(p in y_end.lower() for p in ["present", "current"]):
-                    e_yr = 2026
-                    e_mo = 10
-                else:
-                    e_yr = int(y_end)
-                    e_mo = MONTHS_MAP.get((m_end or "").lower(), 12)
-                e_idx = e_yr * 12 + e_mo
+                    if any(p in y_end.lower() for p in ["present", "current"]):
+                        e_yr = 2026
+                        e_mo = 10
+                    else:
+                        e_yr = int(y_end)
+                        e_mo = MONTHS_MAP.get((m_end or "").lower(), 12)
+                    e_idx = e_yr * 12 + e_mo
 
-                if 1980 * 12 < s_idx <= e_idx <= 2030 * 12:
-                    raw_intervals.append((s_idx, e_idx))
-            except ValueError:
-                continue
+                    if 1980 * 12 < s_idx <= e_idx <= 2030 * 12:
+                        raw_intervals.append((s_idx, e_idx))
+                except ValueError:
+                    continue
 
-        if raw_intervals:
-            merged_ivs = merge_date_intervals(raw_intervals)
-            total_months = sum(e - s for s, e in merged_ivs)
-            est_years = round(total_months / 12.0, 1)
-            if est_years > 0:
-                years_detected_str = f"{est_years:.1f} years"
-                total_years = est_years
+            # Numeric month ranges (e.g. 06/2020 - 08/2023)
+            for mo_s, y_s, mo_e, y_e in DATE_NUMERIC_RANGE_REGEX.findall(scan_text):
+                try:
+                    s_yr = int(y_s)
+                    s_mo = int(mo_s) if mo_s else 1
+                    s_idx = s_yr * 12 + s_mo
+
+                    if any(p in y_e.lower() for p in ["present", "current"]):
+                        e_yr = 2026
+                        e_mo = 10
+                    else:
+                        e_yr = int(y_e)
+                        e_mo = int(mo_e) if mo_e else 12
+                    e_idx = e_yr * 12 + e_mo
+
+                    if 1980 * 12 < s_idx <= e_idx <= 2030 * 12:
+                        raw_intervals.append((s_idx, e_idx))
+                except ValueError:
+                    continue
+
+            # Year-only ranges (e.g. 2021 - 2024)
+            if not raw_intervals:
+                for y_s, y_e in YEAR_ONLY_RANGE_REGEX.findall(scan_text):
+                    try:
+                        s_yr = int(y_s)
+                        s_idx = s_yr * 12 + 1
+                        if any(p in y_e.lower() for p in ["present", "current"]):
+                            e_yr = 2026
+                            e_mo = 10
+                        else:
+                            e_yr = int(y_e)
+                            e_mo = 12
+                        e_idx = e_yr * 12 + e_mo
+
+                        if 1980 * 12 < s_idx <= e_idx <= 2030 * 12:
+                            raw_intervals.append((s_idx, e_idx))
+                    except ValueError:
+                        continue
+
+            if raw_intervals:
+                merged_ivs = merge_date_intervals(raw_intervals)
+                total_months = sum(e - s for s, e in merged_ivs)
+                est_years = round(total_months / 12.0, 1)
+                if est_years > 0:
+                    years_detected_str = f"{est_years:.1f} years"
+                    total_years = est_years
+                    break
 
     # Check for intern / student titles
     has_intern_title = bool(re.search(r"\b(?:intern|internship|student|co-op|apprentice)\b", exp_text, re.IGNORECASE))
@@ -235,9 +291,11 @@ def extract_resume_profile(text: str) -> Dict[str, Any]:
                 s["name"] for s in skills
                 if s["name"].lower() in b.lower()
             ]
+            has_metrics = bool(re.search(r"\b\d+(?:\.\d+)?%|\b\d+x\b|\b\$\d+|\b\d+\s*(?:ms|req|users|gb|mb|tb)\b", b, re.IGNORECASE))
             project_details.append({
                 "description": b,
                 "skillsUsed": b_skills,
+                "hasMetrics": has_metrics,
                 "isAcademic": bool(re.search(r"\b(?:coursework|academic|thesis|capstone|class)\b", b, re.IGNORECASE)),
             })
 
@@ -247,6 +305,10 @@ def extract_resume_profile(text: str) -> Dict[str, Any]:
         candidate_domain = "Healthcare / Clinical"
     elif detected_discipline == "business":
         candidate_domain = "Business / Finance"
+    elif detected_discipline in ["hardware_engineering", "computer_engineering"] or any(
+        s["name"] in ["Embedded C", "FPGA", "VHDL", "Verilog", "PCB Design", "RTOS", "Hardware Debugging"] for s in skills
+    ):
+        candidate_domain = "Embedded / Hardware Systems"
 
     # 5. Top Skill Categories
     cat_counts: Dict[str, int] = {}

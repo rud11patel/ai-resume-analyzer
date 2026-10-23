@@ -6,14 +6,21 @@ SECTION_PATTERNS = {
     "experience": [
         r"^(?:work\s+)?experience",
         r"^professional\s+experience",
-        r"^employment\s+history",
+        r"^relevant\s+experience",
+        r"^career\s+experience",
+        r"^industry\s+experience",
+        r"^employment(?:\s+history)?",
         r"^work\s+history",
         r"^career\s+history",
+        r"^professional\s+background",
     ],
     "education": [
         r"^education(?:al\s+background)?",
         r"^academic\s+background",
+        r"^academic\s+credentials",
         r"^degrees\s+and\s+education",
+        r"^education\s*(?:&|and)\s*certifications?",
+        r"^qualifications",
     ],
     "skills": [
         r"^(?:technical\s+|core\s+)?skills",
@@ -101,9 +108,9 @@ def segment_resume_sections(text: str) -> Dict[str, str]:
             continue
 
         # Check if this line looks like a section header
-        # Usually short (< 40 chars), may be uppercase or title case
-        if len(line) < 45:
-            normalized_line = re.sub(r"[:\-_#=*]+$", "", line).strip().lower()
+        # Usually short (< 55 chars), may be uppercase, title case, or markdown-formatted
+        if len(line) < 55:
+            normalized_line = re.sub(r"^[\s#*\-_=>]+|[\s#*\-_=:]+$", "", line).strip().lower()
             detected_sec: Optional[str] = None
 
             for sec_name, patterns in SECTION_PATTERNS.items():

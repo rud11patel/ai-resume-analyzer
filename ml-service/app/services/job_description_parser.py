@@ -6,8 +6,9 @@ from app.services.skill_normalization import normalize_skill_name, SKILL_ALIASES
 # Section markers for Job Descriptions
 REQUIRED_SECTION_PATTERNS = [
     r"(?:minimum|required|basic)\s+qualifications",
+    r"^qualifications",
     r"(?:core|mandatory|key)\s+requirements",
-    r"requirements",
+    r"^requirements",
     r"what\s+you(?:'ll)?\s+need",
     r"what\s+you\s+bring",
     r"must[\s-]haves?",
@@ -37,13 +38,26 @@ RESPONSIBILITY_PATTERNS = [
     r"about\s+the\s+role",
 ]
 
-EXPERIENCE_REGEX = re.compile(
-    r"(\b\d{1,2}(?:\s*(?:-|to|\+)\s*\d{1,2})?\+?\s*(?:years?|yrs?)(?:\s+of)?(?:\s+(?:relevant|hands-on|professional|software|engineering|industry|embedded|hardware|clinical|nursing))?\s+experience\b)",
-    re.IGNORECASE,
-)
+EXPERIENCE_REGEXES = [
+    # 5-8 years of embedded hardware experience / 5-8 years of experience / 5–8 years experience / 5+ years
+    re.compile(
+        r"(\b\d{1,2}(?:\s*(?:[\-–—]|to)\s*\d{1,2})?\+?\s*(?:years?|yrs?|\'years?|years\')(?:(?:\s+of)?(?:\s+[\w\s\-/]{1,35})?\s+experience|\s+in\s+[\w\s\-/]{1,35}|\b))",
+        re.IGNORECASE,
+    ),
+    # Experience: 5-8 years
+    re.compile(
+        r"(?:experience\s*:\s*)(\b\d{1,2}(?:\s*(?:[\-–—]|to)\s*\d{1,2})?\+?\s*(?:years?|yrs?)\b)",
+        re.IGNORECASE,
+    ),
+    # Minimum 5 years / Requires 5-8 years
+    re.compile(
+        r"(?:minimum|min\.?|at\s+least|requires?)\s+(\b\d{1,2}(?:\s*(?:[\-–—]|to)\s*\d{1,2})?\+?\s*(?:years?|yrs?)(?:\s+of\s+[\w\s\-/]{1,25})?\b)",
+        re.IGNORECASE,
+    ),
+]
 
 DEGREE_REGEX = re.compile(
-    r"(?:bachelor'?s?|master'?s?|ph\.?d\.?|b\.?s\.?|m\.?s\.?|b\.?e\.?|b\.?tech\.?|m\.?tech\.?|b\.?s\.?n\.?|m\.?s\.?n\.?|r\.?n\.?|degree)\s+(?:in|of)\s+[a-zA-Z\s,]+(?:computer\s+science|engineering|electrical|nursing|healthcare|clinical|information\s+technology|related\s+field|equivalent)",
+    r"(?:bachelor'?s?|master'?s?|ph\.?d\.?|b\.?s\.?|m\.?s\.?|b\.?e\.?|b\.?tech\.?|m\.?tech\.?|b\.?s\.?n\.?|m\.?s\.?n\.?|r\.?n\.?|degree)\s+(?:in|of)?\s+[a-zA-Z\s,]+(?:computer\s+science|software\s+engineering|electrical\s+engineering|electronics|computer\s+engineering|hardware\s+engineering|nursing|healthcare|clinical|information\s+technology|related\s+field|equivalent)",
     re.IGNORECASE,
 )
 
@@ -59,32 +73,34 @@ NEGATION_REGEX = re.compile(
 
 DOMAIN_CLASSIFICATION_RULES = [
     (re.compile(r"\b(?:nurse|nursing|rn|bsn|clinical|icu|patient\s+care|hospital|healthcare|triage|medical)\b", re.IGNORECASE), "Healthcare / Nursing"),
-    (re.compile(r"\b(?:software|engineer|developer|frontend|backend|full[\s-]stack|devops|cloud|data|embedded|firmware|hardware|fpga|web)\b", re.IGNORECASE), "Software / Technology"),
+    (re.compile(r"\b(?:embedded|firmware|hardware|fpga|asic|pcb|soc|vlsi|verilog|vhdl|circuit|microcontroller)\b", re.IGNORECASE), "Embedded / Hardware Systems"),
+    (re.compile(r"\b(?:software|engineer|developer|frontend|backend|full[\s-]stack|devops|cloud|data|web)\b", re.IGNORECASE), "Software / Technology"),
     (re.compile(r"\b(?:accountant|cpa|auditor|financial|bookkeeper|tax)\b", re.IGNORECASE), "Finance / Accounting"),
     (re.compile(r"\b(?:attorney|lawyer|paralegal|legal\s+counsel)\b", re.IGNORECASE), "Legal"),
 ]
 
 DOMAIN_KEYWORD_PATTERNS: List[Tuple[str, str, str]] = [
-    ("Architecture & System Design", r"\b(?:architect(?:ure|ed)?|system\s+design|frontend\s+architecture)\b", "High"),
-    ("CI/CD & Automation", r"\b(?:ci[\s/]*cd|continuous\s+integration|automation|deployment\s+pipelines?)\b", "High"),
-    ("Scalability & Performance", r"\b(?:scalab(?:le|ility)|high[\s-]throughput|performance|latency)\b", "High"),
+    # General Software & Web
+    ("Software Architecture & System Design", r"\b(?:software\s+architecture|distributed\s+systems?\s+design|microservices?\s+architecture|cloud\s+architecture)\b", "High"),
+    ("Frontend & UI Architecture", r"\b(?:frontend\s+architecture|ui\s+architecture|component\s+architecture)\b", "Medium"),
+    ("CI/CD & Deployment Pipelines", r"\b(?:ci[\s/]*cd|continuous\s+integration|deployment\s+pipelines?)\b", "High"),
+    ("Scalability & High-Throughput", r"\b(?:scalab(?:le|ility)|high[\s-]throughput|latency\s+optimization)\b", "High"),
     ("API Design & Contracts", r"\b(?:api\s+contracts?|api\s+design|rest\s+apis?|endpoints?)\b", "Medium"),
-    ("Automated Testing & QA", r"\b(?:automated\s+tests?|unit\s+test(?:ing|s)?|end[\s-]to[\s-]end|e2e)\b", "Medium"),
+    ("Software Automated Testing & QA", r"\b(?:automated\s+unit\s+tests?|end[\s-]to[\s-]end\s+testing|e2e\s+testing)\b", "Medium"),
     ("Distributed Systems", r"\bdistributed\s+systems?\b", "High"),
-    ("Microservices Architecture", r"\bmicroservices?\b", "High"),
-    ("High Availability", r"\bhigh\s+availability\b", "High"),
-    ("Fault Tolerance", r"\bfault\s+toleran(?:ce|t)\b", "Medium"),
-    ("Real-Time Systems", r"\breal[\s-]time(?:\s+systems?)?\b", "High"),
-    ("Concurrency & Multithreading", r"\b(?:concurrency|multithread(?:ing|ed))\b", "High"),
-    ("Signal Integrity", r"\bsignal\s+integrity\b", "High"),
-    ("Hardware-Software Co-Design", r"\bhardware[\s-]software\b", "High"),
-    ("Board Bring-up", r"\bboard\s+bring[\s-]up\b", "High"),
-    ("Firmware Architecture", r"\bfirmware\b", "High"),
-    ("RTOS Scheduling", r"\brtos\b", "High"),
-    ("Agile / Scrum Methodology", r"\b(?:agile|scrum)\b", "Medium"),
-    ("Security Best Practices", r"\b(?:security|owasp|cryptography)\b", "Medium"),
-    ("Memory Management", r"\bmemory\s+management\b", "High"),
-    # Clinical / Healthcare domain patterns
+    ("High Availability & Fault Tolerance", r"\b(?:high\s+availability|fault\s+toleran(?:ce|t))\b", "High"),
+    
+    # Embedded & Hardware Systems (Clearly distinguished from web software)
+    ("Hardware Board Bring-up & Architecture", r"\b(?:hardware\s+board\s+bring[\s-]up|board\s+bring[\s-]up|hardware\s+architecture|schematic\s+capture)\b", "High"),
+    ("Embedded Firmware & Bare-Metal Design", r"\b(?:firmware\s+development|bare[\s-]metal|microcontroller\s+firmware|device\s+drivers?)\b", "High"),
+    ("Hardware Verification & Bench Debugging", r"\b(?:oscilloscope|logic\s+analyzer|hardware\s+debugging|protocol\s+analyzer|multimeter)\b", "High"),
+    ("Signal Integrity & Power Analysis", r"\b(?:signal\s+integrity|power\s+management\s+optimization|timing\s+analysis)\b", "High"),
+    ("Hardware-Software Co-Design", r"\bhardware[\s-]software\s+co[\s-]design\b", "High"),
+    ("RTOS Scheduling & Concurrency", r"\b(?:rtos\s+scheduling|real[\s-]time\s+operating\s+systems?)\b", "High"),
+    
+    # Security, Concurrency, and Clinical
+    ("Security Best Practices & OWASP", r"\b(?:security\s+best\s+practices|owasp|cryptography)\b", "Medium"),
+    ("Concurrency & Multithreading", r"\b(?:multithread(?:ing|ed)|thread\s+safety)\b", "High"),
     ("Patient Care & Clinical Workflow", r"\b(?:patient\s+care|clinical\s+assessment|triage|vital\s+signs)\b", "High"),
     ("Medication Administration", r"\b(?:medication\s+administration|iv\s+therapy|pharmacology)\b", "High"),
     ("Electronic Health Records (EHR)", r"\b(?:emr|ehr|electronic\s+medical\s+records?|epic|cerner)\b", "Medium"),
@@ -292,22 +308,50 @@ def parse_job_description(
     full_text = raw_text
 
     # 4. Extract Years of Experience
-    exp_matches_req = EXPERIENCE_REGEX.findall(req_text)
-    exp_matches_full = EXPERIENCE_REGEX.findall(full_text)
-    exp_matches = exp_matches_req if exp_matches_req else exp_matches_full
-
     years_required = "Not specified"
     min_years_num = 0.0
 
-    if exp_matches:
-        years_required = exp_matches[0].strip()
-        m_num = re.search(r"(\d+)(?:\s*(?:-|to)\s*(\d+))?", years_required)
-        if m_num:
-            min_years_num = float(m_num.group(1))
+    def extract_years_from_block(text_block: str) -> Optional[Tuple[str, float]]:
+        if not text_block:
+            return None
+        for rx in EXPERIENCE_REGEXES:
+            matches = rx.findall(text_block)
+            if matches:
+                cand = matches[0].strip() if isinstance(matches[0], str) else matches[0][0].strip()
+                cand_clean = re.sub(r"\s+", " ", cand).strip()
+                m_num = re.search(r"(\d+)(?:\s*(?:[\-–—]|to)\s*(\d+))?", cand_clean)
+                if m_num:
+                    min_v = float(m_num.group(1))
+                    if 0 < min_v <= 30:
+                        return cand_clean, min_v
+        return None
 
-    # 5. Extract Degree Qualifications
+    exp_found = extract_years_from_block(req_text) or extract_years_from_block(full_text)
+    if exp_found:
+        years_required = exp_found[0]
+        min_years_num = exp_found[1]
+
+    # 5. Extract Degree Qualifications & Accepted Disciplines
     degree_matches = DEGREE_REGEX.findall(full_text)
     qualifications = [d.strip() for d in degree_matches]
+
+    is_degree_mandatory = len(DEGREE_REGEX.findall(req_text)) > 0 or bool(
+        re.search(r"\b(?:bachelor'?s?|master'?s?|degree|b\.?s\.?|b\.?e\.?|b\.?tech)\b", req_text, re.IGNORECASE)
+    )
+
+    accepted_disciplines: List[str] = []
+    if re.search(r"\b(?:electrical\s+engineering|electronics|bsee|msee|hardware\s+engineering)\b", full_text, re.IGNORECASE):
+        accepted_disciplines.append("hardware_engineering")
+    if re.search(r"\b(?:computer\s+engineering)\b", full_text, re.IGNORECASE):
+        accepted_disciplines.append("computer_engineering")
+    if re.search(r"\b(?:computer\s+science|software\s+engineering|information\s+technology|bscs|mscs)\b", full_text, re.IGNORECASE):
+        accepted_disciplines.append("software_cs")
+    if re.search(r"\b(?:nursing|bsn|msn|registered\s+nurse|healthcare|clinical)\b", full_text, re.IGNORECASE):
+        accepted_disciplines.append("healthcare")
+    if re.search(r"\b(?:accounting|finance|business|mba)\b", full_text, re.IGNORECASE):
+        accepted_disciplines.append("business")
+    if re.search(r"\b(?:related\s+(?:engineering|technical|scientific|field|discipline)|equivalent)\b", full_text, re.IGNORECASE):
+        accepted_disciplines.append("related_field")
 
     # 6. Extract Required vs Preferred Skills (Open-Domain Fallback)
     req_skills_map = extract_skills_from_str(req_text)
@@ -386,6 +430,8 @@ def parse_job_description(
         "experienceYearsRequired": years_required,
         "experienceMinYears": min_years_num,
         "qualifications": qualifications,
+        "acceptedDisciplines": accepted_disciplines,
+        "isDegreeMandatory": is_degree_mandatory,
         "responsibilities": responsibilities[:8],
         "keywords": keywords,
     }

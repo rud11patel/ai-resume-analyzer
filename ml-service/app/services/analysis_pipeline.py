@@ -194,9 +194,22 @@ def run_analysis_pipeline(request: AnalysisRequest) -> AnalysisResponse:
             f"Detected approximately {resume_profile['yearsDetected']} of professional experience, "
             f"satisfying target seniority requirement of '{years_req_str}'."
         )
+    elif years_req_str != "Not specified" and resume_profile["yearsDetected"] != "Not specified":
+        level_assessment = (
+            f"Detected approximately {resume_profile['yearsDetected']} of experience against "
+            f"target requirement of '{years_req_str}'."
+        )
+    elif years_req_str == "Not specified" and resume_profile["yearsDetected"] != "Not specified":
+        level_assessment = (
+            f"Detected {resume_profile['yearsDetected']} of experience. Target job posting does not specify a minimum years requirement."
+        )
+    elif resume_profile["yearsDetected"] == "Not specified" and years_req_str != "Not specified":
+        level_assessment = (
+            f"Target role requires '{years_req_str}'. Explicit calendar tenure could not be conclusively determined from resume dates."
+        )
     else:
         level_assessment = (
-            f"Assessed career tenure of {resume_profile['yearsDetected']} against role expectations."
+            "Experience tenure and seniority requirements are both unspecified in the provided text."
         )
 
     # 8. Deterministic Normalized Scoring
@@ -215,7 +228,7 @@ def run_analysis_pipeline(request: AnalysisRequest) -> AnalysisResponse:
     # Experience breakdown items based on actual calculated dimensions
     skill_pct = match_results["skillMatchSummary"]["percentage"]
     tenure_score = score_result["subScores"]["experienceRelevance"]
-    proj_relevance_score = score_result.get("projectRelevance", {}).get("projectRelevanceScore", 40)
+    proj_relevance_score = score_result.get("projectRelevance", {}).get("projectRelevanceScore", 0)
 
     experience_breakdown = [
         ExperienceBreakdownItem(
@@ -242,6 +255,10 @@ def run_analysis_pipeline(request: AnalysisRequest) -> AnalysisResponse:
         breakdown=experience_breakdown,
     )
 
+    # Extract experience bullets for transformation & metric analysis
+    exp_text = resume_profile["sections"].get("experience", "") or resume_profile["sections"].get("projects", "")
+    bullets_to_check = extract_bullet_points(exp_text)
+
     # 9. Recommendations, Bullet Point Improvements, and ATS Checks
     recommendations_raw = generate_recommendations(
         missing_skills=match_results["missingSkills"],
@@ -250,12 +267,13 @@ def run_analysis_pipeline(request: AnalysisRequest) -> AnalysisResponse:
         keyword_analysis=keyword_analysis_dict,
         years_detected=years_detected,
         years_required_str=years_req_str,
+        matched_skills=match_results["matchedSkills"],
+        role_title=parsed_jd.get("roleTitle", ""),
+        experience_bullets=bullets_to_check,
+        detected_projects=resume_profile.get("detectedProjects", []),
     )
     recommendations = [Recommendation(**r) for r in recommendations_raw]
 
-    # Extract experience bullets for transformation
-    exp_text = resume_profile["sections"].get("experience", "") or resume_profile["sections"].get("projects", "")
-    bullets_to_check = extract_bullet_points(exp_text)
     improved_bullets_raw = generate_improved_bullet_points(bullets_to_check, match_results["matchedSkills"])
     improved_bullets = [ImprovedBulletPoint(**b) for b in improved_bullets_raw]
 
@@ -270,19 +288,32 @@ def run_analysis_pipeline(request: AnalysisRequest) -> AnalysisResponse:
     target_skills_lower = {s.lower() for s in (parsed_jd["requiredSkills"] + parsed_jd["preferredSkills"])}
     relevant_projects: List[str] = []
     for p_str in resume_profile["detectedProjects"]:
-        if any(ts in p_str.lower() for ts in target_skills_lower):
+        p_lower = p_str.lower()
+        is_relevant = False
+        for ts in target_skills_lower:
+            if len(ts) <= 3:
+                if re.search(r"(?<![a-zA-Z0-9])" + re.escape(ts) + r"(?![a-zA-Z0-9])", p_lower):
+                    is_relevant = True
+                    break
+            else:
+                if re.search(r"\b" + re.escape(ts) + r"\b", p_lower):
+                    is_relevant = True
+                    break
+        if is_relevant:
             relevant_projects.append(p_str)
 
-    if not relevant_projects and resume_profile["detectedProjects"]:
-        relevant_projects = resume_profile["detectedProjects"][:2]
+    if relevant_projects:
+        proj_comment = f"Identified {proj_count} project portfolio items ({len(relevant_projects)} directly relevant to target role requirements)."
+    elif proj_count > 0:
+        proj_comment = f"Identified {proj_count} projects; none demonstrated direct alignment with target {parsed_jd.get('roleTitle', 'role')} competencies."
+    else:
+        proj_comment = "No project portfolio items detected in the resume."
 
     project_analysis = ProjectAnalysis(
         detectedProjectsCount=proj_count,
         relevantProjects=relevant_projects[:4],
         projectRelevanceScore=proj_relevance_score,
-        comments=(
-            f"Identified {proj_count} project portfolio items ({relevant_proj_count} directly relevant to target role requirements)."
-        ),
+        comments=proj_comment,
     )
 
     # 11. Resume Summary & Job Requirements

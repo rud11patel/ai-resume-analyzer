@@ -177,69 +177,101 @@ def calculate_compatibility_score(
     years_detected = experience_profile.get("totalYearsNumeric", 0.0)
     has_unknown_experience = (years_detected == 0.0 and experience_profile.get("yearsDetected") == "Not specified")
 
-    target_years = 2.0
+    target_years: Optional[float] = None
     years_req_str = experience_profile.get("yearsRequiredStr", "")
     if parsed_jd and parsed_jd.get("experienceMinYears", 0.0) > 0:
         target_years = parsed_jd["experienceMinYears"]
-    else:
-        m_yr = re.search(r"(\d+)(?:\s*(?:-|to)\s*(\d+))?", years_req_str)
+    elif years_req_str and years_req_str != "Not specified":
+        m_yr = re.search(r"(\d+)(?:\s*(?:[\-–—]|to)\s*(\d+))?", years_req_str)
         if m_yr:
             target_years = float(m_yr.group(1))
 
-    # Evaluate tenure: IF DOMAIN MISMATCH, tenure in coding does not count as tenure in nursing!
+    # Candidate's technical domain alignment factor (0.0 to 1.0)
+    tech_relevance_ratio = (matched_req_count + 0.5 * partial_req_count) / max(1, total_req_units) if total_req_units > 0 else 1.0
+
     if is_domain_mismatch:
         tenure_score = 0
         project_relevance_score = 0
+        project_delivery_quality = 0
+        relevant_project_count = 0
         score_exp = 0
     else:
-        if has_unknown_experience:
-            tenure_score = 50
-        elif target_years <= 0.5:
-            tenure_score = 95 if years_detected >= 0.5 else 85
-        elif years_detected >= target_years:
-            tenure_score = 100
-        elif years_detected > 0:
-            ratio = years_detected / target_years
-            if target_years >= 5.0 and ratio < 0.4:
-                tenure_score = int(round(ratio * 60))
+        # A. Professional Experience & Seniority Score
+        if target_years is not None and target_years > 0:
+            if has_unknown_experience:
+                raw_tenure = 40
+            elif years_detected >= target_years:
+                raw_tenure = 100
+            elif years_detected > 0:
+                raw_tenure = min(100, max(0, int(round((years_detected / target_years) * 90))))
             else:
-                tenure_score = int(round(ratio * 90))
+                raw_tenure = 25
         else:
-            tenure_score = 25 if target_years >= 5.0 else 40
+            # Target years is not specified by the JD - preserve unknown without defaulting to 2.0
+            if has_unknown_experience:
+                raw_tenure = 50
+            elif years_detected >= 5.0:
+                raw_tenure = 95
+            elif years_detected >= 2.0:
+                raw_tenure = 85
+            else:
+                raw_tenure = 70
 
-        # Project Relevance
-        target_skills_lower = {s.lower() for s in (required_skills + preferred_skills)}
+        # Weight tenure by role relevance: tenure in unrelated work does not count as senior role experience
+        if tech_relevance_ratio >= 0.50:
+            relevance_mult = 1.0
+        else:
+            relevance_mult = max(0.0, tech_relevance_ratio / 0.50)
+        tenure_score = min(100, max(0, int(round(raw_tenure * relevance_mult))))
+
+        # B. Project Delivery Quality vs Role Relevance
         project_details = experience_profile.get("projectDetails", [])
+        target_skills_lower = {s.lower() for s in (required_skills + preferred_skills)}
+        
         relevant_project_count = 0
         total_project_overlap = 0
 
         if project_details:
+            # Measure delivery quality independently
+            quality_points = 0
+            for p in project_details:
+                quality_points += 20
+                if p.get("hasMetrics", False):
+                    quality_points += 15
+                if len(p.get("skillsUsed", [])) >= 2:
+                    quality_points += 10
+            project_delivery_quality = min(100, quality_points)
+
+            # Measure role relevance strictly by demonstrated target competencies
             for p in project_details:
                 p_skills = {s.lower() for s in p.get("skillsUsed", [])}
-                overlap = len(p_skills.intersection(target_skills_lower))
-                if overlap > 0:
+                desc_lower = p.get("description", "").lower()
+                text_skills = {ts for ts in target_skills_lower if re.search(r"\b" + re.escape(ts) + r"\b", desc_lower)}
+                all_overlap = p_skills.intersection(target_skills_lower).union(text_skills)
+                if all_overlap:
                     relevant_project_count += 1
-                    total_project_overlap += overlap
-            
-            if relevant_project_count > 0:
-                project_relevance_score = min(100, 50 + min(35, total_project_overlap * 12) + min(15, relevant_project_count * 5))
+                    total_project_overlap += len(all_overlap)
+
+            if relevant_project_count > 0 and len(target_skills_lower) > 0:
+                overlap_ratio = min(1.0, total_project_overlap / len(target_skills_lower))
+                coverage_score = overlap_ratio * 70
+                count_score = (relevant_project_count / len(project_details)) * 30
+                project_relevance_score = min(100, max(0, int(round(coverage_score + count_score))))
             else:
-                project_relevance_score = 25
+                # Unrelated projects receive 0 relevance for specialized roles
+                project_relevance_score = 0
         else:
             detected_projs = experience_profile.get("detectedProjects", [])
+            project_delivery_quality = 50 if detected_projs else 0
             if detected_projs and target_skills_lower:
-                overlap_count = 0
-                for dp in detected_projs:
-                    dp_lower = dp.lower()
-                    if any(ts in dp_lower for ts in target_skills_lower):
-                        overlap_count += 1
-                project_relevance_score = 80 if overlap_count > 0 else 30
+                overlap_count = sum(1 for dp in detected_projs if any(ts in dp.lower() for ts in target_skills_lower))
+                relevant_project_count = overlap_count
+                project_relevance_score = min(100, int(round((overlap_count / len(detected_projs)) * 80))) if overlap_count > 0 else 0
             else:
-                project_relevance_score = 50 if has_unknown_experience else 35
+                project_relevance_score = 0 if len(required_skills) > 0 else (40 if has_unknown_experience else 20)
 
-        score_exp = min(100, max(0, int(round(0.65 * tenure_score + 0.35 * project_relevance_score))))
-
-    relevant_project_count = relevant_project_count if not is_domain_mismatch and 'relevant_project_count' in locals() else 0
+        # Combined Experience and Project Relevance
+        score_exp = min(100, max(0, int(round(0.60 * tenure_score + 0.40 * project_relevance_score))))
 
     # -------------------------------------------------------------
     # 4. Education & Eligibility Score (S_edu)
@@ -248,41 +280,74 @@ def calculate_compatibility_score(
     candidate_discipline = experience_profile.get("detectedDiscipline", "general")
     has_degree = detected_degree in ["Bachelor's", "Master's", "Doctorate"]
 
+    accepted_disciplines = parsed_jd.get("acceptedDisciplines", []) if parsed_jd else []
+    is_degree_mandatory = parsed_jd.get("isDegreeMandatory", False) if parsed_jd else False
     jd_quals = parsed_jd.get("qualifications", []) if parsed_jd else []
-    requires_degree = len(jd_quals) > 0 or bool(re.search(r"\b(?:degree|bachelor|master|phd|bsn|rn)\b", str(parsed_jd), re.IGNORECASE))
+    requires_degree = is_degree_mandatory or len(jd_quals) > 0 or bool(re.search(r"\b(?:degree|bachelor|master|phd|bsn|rn)\b", str(parsed_jd), re.IGNORECASE))
 
-    # Discipline alignment check: A Computer Science degree does NOT satisfy a Nursing degree requirement!
     if is_domain_mismatch:
         score_edu = 0
     elif jd_domain == "Healthcare / Nursing" and candidate_discipline != "healthcare":
         score_edu = 0
-    elif has_degree:
-        if jd_domain == "Software / Technology" and candidate_discipline == "technology":
-            score_edu = 100 if detected_degree in ["Master's", "Doctorate"] else 90
-        elif jd_domain == "Software / Technology" and candidate_discipline != "technology":
-            # Non-technical degree for technical role
-            score_edu = 50
-        else:
-            score_edu = 85
     elif not requires_degree:
-        score_edu = 75
+        if jd_domain == "Embedded / Hardware Systems" and candidate_discipline not in ["hardware_engineering", "computer_engineering"]:
+            score_edu = 40 if detected_degree in ["Master's", "Doctorate"] else 35
+        else:
+            score_edu = 85 if has_degree else 75
+    elif not has_degree:
+        score_edu = 20 if is_degree_mandatory else 50
     else:
-        score_edu = 30
+        # Candidate has a degree - evaluate discipline alignment against target requirements
+        if accepted_disciplines:
+            if candidate_discipline in accepted_disciplines or "related_field" in accepted_disciplines:
+                # Fully accepted discipline
+                score_edu = 100 if detected_degree in ["Master's", "Doctorate"] else 90
+            elif "hardware_engineering" in accepted_disciplines and candidate_discipline not in ["hardware_engineering", "computer_engineering"]:
+                # Specialized hardware engineering required; candidate has general software/CS or unrelated degree
+                # Satisfies general higher education baseline but does not meet specialized eligibility
+                score_edu = 40 if detected_degree in ["Master's", "Doctorate"] else 35
+            elif candidate_discipline in ["software_cs", "computer_engineering"]:
+                score_edu = 60
+            else:
+                score_edu = 25
+        else:
+            # Fallback when explicit disciplines were not extracted
+            if jd_domain == "Software / Technology":
+                if candidate_discipline in ["software_cs", "hardware_engineering", "computer_engineering"]:
+                    score_edu = 100 if detected_degree in ["Master's", "Doctorate"] else 90
+                else:
+                    score_edu = 45
+            elif jd_domain == "Embedded / Hardware Systems":
+                if candidate_discipline in ["hardware_engineering", "computer_engineering"]:
+                    score_edu = 100 if detected_degree in ["Master's", "Doctorate"] else 90
+                else:
+                    score_edu = 40 if detected_degree in ["Master's", "Doctorate"] else 35
+            else:
+                score_edu = 80
 
     # -------------------------------------------------------------
     # 5. Role-Specific Alignment Score (S_role)
     # -------------------------------------------------------------
-    kw_found = len(keyword_analysis.get("keywordsFound", []))
-    kw_missing = len(keyword_analysis.get("keywordsMissing", []))
-    total_kw = kw_found + kw_missing
+    kw_found_list = keyword_analysis.get("keywordsFound", [])
+    kw_missing_list = keyword_analysis.get("keywordsMissing", [])
+    kw_found = len(kw_found_list)
+    total_kw = kw_found + len(kw_missing_list)
 
     if is_domain_mismatch:
         score_role = 0
     elif total_kw > 0:
-        score_role = min(100, max(0, int(round((kw_found / total_kw) * 100))))
+        # If candidate demonstrates <= 10% technical qualification, generic keywords
+        # (e.g. general architecture, testing, agile) must not award false role-specific alignment
+        if score_req <= 10:
+            specialized_matches = [
+                k for k in kw_found_list
+                if any(t in k.get("keyword", "").lower() for t in ["hardware", "firmware", "bring-up", "rtos", "fpga", "pcb", "clinical", "nursing", "icu"])
+            ]
+            score_role = min(100, max(0, int(round((len(specialized_matches) / total_kw) * 100))))
+        else:
+            score_role = min(100, max(0, int(round((len(kw_found_list) / total_kw) * 100))))
     else:
-        # If no specific domain keywords were matched or defined
-        score_role = 0 if len(required_skills) > 0 and matched_req_count == 0 else 60
+        score_role = 0 if len(required_skills) > 0 and matched_req_count == 0 else 50
 
     # -------------------------------------------------------------
     # 6. ATS Formatting & Structural Hygiene Score (S_ats) - Independent
@@ -344,15 +409,14 @@ def calculate_compatibility_score(
             "Critical eligibility warning: Zero mandatory required qualifications matched. "
             "Compatibility score capped at 5% maximum."
         )
-    elif target_years >= 5.0 and len(required_skills) >= 4 and ((matched_req_count + 0.5 * partial_req_count) / len(required_skills)) < 0.25:
-        if overall_score > 35:
-            overall_score = 35
+    elif target_years is not None and target_years >= 5.0 and len(required_skills) >= 4 and ((matched_req_count + 0.5 * partial_req_count) / len(required_skills)) < 0.25:
         warnings.append(
             f"Senior role eligibility warning: Candidate demonstrates fewer than 25% of core technical qualifications "
-            f"for a senior {target_years:.0f}+ year expectation. Compatibility score capped at 35%."
+            f"for a senior {target_years:.0f}+ year expectation."
         )
 
     score_label = get_score_label(overall_score)
+    target_exp_display = f"{target_years:.1f} yrs target" if target_years is not None else "role expectations"
 
     components = [
         {
@@ -371,7 +435,7 @@ def calculate_compatibility_score(
             "rawScore": score_exp,
             "weightedScore": round(w_exp * score_exp, 2),
             "explanation": (
-                f"Assessed career tenure (~{years_detected:.1f} yrs vs {target_years:.1f} yrs target) "
+                f"Assessed career tenure (~{years_detected:.1f} yrs vs {target_exp_display}) "
                 f"in role domain combined with project relevance ({relevant_project_count} relevant projects)."
             ),
         },

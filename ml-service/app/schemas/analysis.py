@@ -75,6 +75,7 @@ class Recommendation(BaseModel):
     impact: str  # 'High Impact', 'Medium Impact', 'Quick Win'
     title: str
     description: str
+    category: Optional[str] = None
 
 
 class ImprovedBulletPoint(BaseModel):
